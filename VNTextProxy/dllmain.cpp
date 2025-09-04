@@ -33,7 +33,7 @@ void Initialize()
     SjisTunnelEncoding::PatchGameLookupTable();
 
     GdiProportionalizer::Init();
-    D2DProportionalizer::Init();
+//    D2DProportionalizer::Init();
 
     EnginePatches::Init();
 
