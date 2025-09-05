@@ -2,8 +2,162 @@
 
 using namespace std;
 
+/*
+Example call sequence:
+
+GdiProportionalizer::CreateFontAHook()
+GdiProportionalizer::CreateFontWHook()
+GdiProportionalizer::CreateFontIndirectWHook()
+GdiProportionalizer::SelectObjectHook()
+GdiProportionalizer::GetGlyphOutlineAHook() char: O, 0x4f
+GdiProportionalizer::GetGlyphOutlineAHook() char: O, 0x4f
+GdiProportionalizer::GetGlyphOutlineAHook() char: O, 0x4f
+GdiProportionalizer::GetGlyphOutlineAHook() char: r, 0x72
+GdiProportionalizer::GetGlyphOutlineAHook() char: r, 0x72
+GdiProportionalizer::GetGlyphOutlineAHook() char: r, 0x72
+GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
+GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
+GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
+GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
+GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
+GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
+GdiProportionalizer::GetGlyphOutlineAHook() char: v, 0x76
+GdiProportionalizer::GetGlyphOutlineAHook() char: v, 0x76
+GdiProportionalizer::GetGlyphOutlineAHook() char: v, 0x76
+GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
+GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
+GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
+GdiProportionalizer::GetGlyphOutlineAHook() char: n, 0x6e
+GdiProportionalizer::GetGlyphOutlineAHook() char: n, 0x6e
+GdiProportionalizer::GetGlyphOutlineAHook() char: n, 0x6e
+GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
+GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
+GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
+GdiProportionalizer::GetGlyphOutlineAHook() char: ", 0x22
+GdiProportionalizer::GetGlyphOutlineAHook() char: ", 0x22
+GdiProportionalizer::GetGlyphOutlineAHook() char: ", 0x22
+GdiProportionalizer::GetGlyphOutlineAHook() char: W, 0x57
+GdiProportionalizer::GetGlyphOutlineAHook() char: W, 0x57
+GdiProportionalizer::GetGlyphOutlineAHook() char: W, 0x57
+GdiProportionalizer::GetGlyphOutlineAHook() char: h, 0x68
+GdiProportionalizer::GetGlyphOutlineAHook() char: h, 0x68
+GdiProportionalizer::GetGlyphOutlineAHook() char: h, 0x68
+GdiProportionalizer::GetGlyphOutlineAHook() char: a, 0x61
+GdiProportionalizer::GetGlyphOutlineAHook() char: a, 0x61
+GdiProportionalizer::GetGlyphOutlineAHook() char: a, 0x61
+GdiProportionalizer::GetGlyphOutlineAHook() char: t, 0x74
+GdiProportionalizer::GetGlyphOutlineAHook() char: t, 0x74
+GdiProportionalizer::GetGlyphOutlineAHook() char: t, 0x74
+GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
+GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
+GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
+GdiProportionalizer::GetGlyphOutlineAHook() char: d, 0x64
+GdiProportionalizer::GetGlyphOutlineAHook() char: d, 0x64
+GdiProportionalizer::GetGlyphOutlineAHook() char: d, 0x64
+GdiProportionalizer::GetGlyphOutlineAHook() char: i, 0x69
+GdiProportionalizer::GetGlyphOutlineAHook() char: i, 0x69
+GdiProportionalizer::GetGlyphOutlineAHook() char: i, 0x69
+GdiProportionalizer::GetGlyphOutlineAHook() char: d, 0x64
+GdiProportionalizer::GetGlyphOutlineAHook() char: d, 0x64
+GdiProportionalizer::GetGlyphOutlineAHook() char: d, 0x64
+GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
+GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
+GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
+GdiProportionalizer::GetGlyphOutlineAHook() char: y, 0x79
+GdiProportionalizer::GetGlyphOutlineAHook() char: y, 0x79
+GdiProportionalizer::GetGlyphOutlineAHook() char: y, 0x79
+GdiProportionalizer::GetGlyphOutlineAHook() char: o, 0x6f
+GdiProportionalizer::GetGlyphOutlineAHook() char: o, 0x6f
+GdiProportionalizer::GetGlyphOutlineAHook() char: o, 0x6f
+GdiProportionalizer::GetGlyphOutlineAHook() char: u, 0x75
+GdiProportionalizer::GetGlyphOutlineAHook() char: u, 0x75
+GdiProportionalizer::GetGlyphOutlineAHook() char: u, 0x75
+GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
+GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
+GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
+GdiProportionalizer::GetGlyphOutlineAHook() char: h, 0x68
+GdiProportionalizer::GetGlyphOutlineAHook() char: h, 0x68
+GdiProportionalizer::GetGlyphOutlineAHook() char: h, 0x68
+GdiProportionalizer::GetGlyphOutlineAHook() char: a, 0x61
+GdiProportionalizer::GetGlyphOutlineAHook() char: a, 0x61
+GdiProportionalizer::GetGlyphOutlineAHook() char: a, 0x61
+GdiProportionalizer::GetGlyphOutlineAHook() char: v, 0x76
+GdiProportionalizer::GetGlyphOutlineAHook() char: v, 0x76
+GdiProportionalizer::GetGlyphOutlineAHook() char: v, 0x76
+GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
+GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
+GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
+GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
+GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
+GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
+GdiProportionalizer::GetGlyphOutlineAHook() char: t, 0x74
+GdiProportionalizer::GetGlyphOutlineAHook() char: t, 0x74
+GdiProportionalizer::GetGlyphOutlineAHook() char: t, 0x74
+GdiProportionalizer::GetGlyphOutlineAHook() char: o, 0x6f
+GdiProportionalizer::GetGlyphOutlineAHook() char: o, 0x6f
+GdiProportionalizer::GetGlyphOutlineAHook() char: o, 0x6f
+GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
+GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
+GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
+GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
+GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
+GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
+GdiProportionalizer::GetGlyphOutlineAHook() char: a, 0x61
+GdiProportionalizer::GetGlyphOutlineAHook() char: a, 0x61
+GdiProportionalizer::GetGlyphOutlineAHook() char: a, 0x61
+GdiProportionalizer::GetGlyphOutlineAHook() char: t, 0x74
+GdiProportionalizer::GetGlyphOutlineAHook() char: t, 0x74
+GdiProportionalizer::GetGlyphOutlineAHook() char: t, 0x74
+GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
+GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
+GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
+GdiProportionalizer::GetGlyphOutlineAHook() char: y, 0x79
+GdiProportionalizer::GetGlyphOutlineAHook() char: y, 0x79
+GdiProportionalizer::GetGlyphOutlineAHook() char: y, 0x79
+GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
+GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
+GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
+GdiProportionalizer::GetGlyphOutlineAHook() char: s, 0x73
+GdiProportionalizer::GetGlyphOutlineAHook() char: s, 0x73
+GdiProportionalizer::GetGlyphOutlineAHook() char: s, 0x73
+GdiProportionalizer::GetGlyphOutlineAHook() char: t, 0x74
+GdiProportionalizer::GetGlyphOutlineAHook() char: t, 0x74
+GdiProportionalizer::GetGlyphOutlineAHook() char: t, 0x74
+GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
+GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
+GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
+GdiProportionalizer::GetGlyphOutlineAHook() char: r, 0x72
+GdiProportionalizer::GetGlyphOutlineAHook() char: r, 0x72
+GdiProportionalizer::GetGlyphOutlineAHook() char: r, 0x72
+GdiProportionalizer::GetGlyphOutlineAHook() char: d, 0x64
+GdiProportionalizer::GetGlyphOutlineAHook() char: d, 0x64
+GdiProportionalizer::GetGlyphOutlineAHook() char: d, 0x64
+GdiProportionalizer::GetGlyphOutlineAHook() char: a, 0x61
+GdiProportionalizer::GetGlyphOutlineAHook() char: a, 0x61
+GdiProportionalizer::GetGlyphOutlineAHook() char: a, 0x61
+GdiProportionalizer::GetGlyphOutlineAHook() char: y, 0x79
+GdiProportionalizer::GetGlyphOutlineAHook() char: y, 0x79
+GdiProportionalizer::GetGlyphOutlineAHook() char: y, 0x79
+GdiProportionalizer::GetGlyphOutlineAHook() char: ", 0x22
+GdiProportionalizer::GetGlyphOutlineAHook() char: ", 0x22
+GdiProportionalizer::GetGlyphOutlineAHook() char: ", 0x22
+GdiProportionalizer::GetGlyphOutlineAHook() char: ?, 0x3f
+GdiProportionalizer::GetGlyphOutlineAHook() char: ?, 0x3f
+GdiProportionalizer::GetGlyphOutlineAHook() char: ?, 0x3f
+GdiProportionalizer::SelectObjectHook()
+GdiProportionalizer::DeleteObjectHook(
+*/
+
 void GdiProportionalizer::Init()
 {
+#if _DEBUG
+    FILE* log = nullptr;
+    if (fopen_s(&log, "winmm_dll_log.txt", "wt") == 0 && log) {
+        fprintf(log, "GdiProportionalizer::Init() \n");
+        fclose(log);
+    }
+#endif
+
     Proportionalizer::Init();
     ImportHooker::Hook(
         {
@@ -25,6 +179,14 @@ void GdiProportionalizer::Init()
 
 int GdiProportionalizer::EnumFontsAHook(HDC hdc, LPCSTR lpLogfont, FONTENUMPROCA lpProc, LPARAM lParam)
 {
+#if _DEBUG
+    FILE* log = nullptr;
+    if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
+        fprintf(log, "GdiProportionalizer::EnumFontsAHook() \n");
+        fclose(log);
+    }
+#endif
+
     EnumFontsContext context;
     context.OriginalProc = lpProc;
     context.OriginalContext = lParam;
@@ -34,6 +196,14 @@ int GdiProportionalizer::EnumFontsAHook(HDC hdc, LPCSTR lpLogfont, FONTENUMPROCA
 
 int GdiProportionalizer::EnumFontFamiliesExAHook(HDC hdc, LPLOGFONTA lpLogfont, FONTENUMPROCA lpProc, LPARAM lParam, DWORD dwFlags)
 {
+#if _DEBUG
+    FILE* log = nullptr;
+    if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
+        fprintf(log, "GdiProportionalizer::EnumFontFamiliesExAHook() \n");
+        fclose(log);
+    }
+#endif
+
     LOGFONTW logFontW = ConvertLogFontAToW(*lpLogfont);
     EnumFontsContext context;
     context.OriginalProc = lpProc;
@@ -44,6 +214,14 @@ int GdiProportionalizer::EnumFontFamiliesExAHook(HDC hdc, LPLOGFONTA lpLogfont, 
 
 int GdiProportionalizer::EnumFontsProc(const LOGFONTW* lplf, const TEXTMETRICW* lptm, DWORD dwType, LPARAM lpData)
 {
+#if _DEBUG
+    FILE* log = nullptr;
+    if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
+        fprintf(log, "GdiProportionalizer::EnumFontsProc() \n");
+        fclose(log);
+    }
+#endif
+
     EnumFontsContext* pContext = (EnumFontsContext*)lpData;
     ENUMLOGFONTEXDVA logFontExA;
     logFontExA.elfEnumLogfontEx.elfLogFont = ConvertLogFontWToA(*lplf);
@@ -64,6 +242,14 @@ HFONT GdiProportionalizer::CreateFontAHook(int cHeight, int cWidth, int cEscapem
     DWORD bItalic, DWORD bUnderline, DWORD bStrikeOut, DWORD iCharSet, DWORD iOutPrecision, DWORD iClipPrecision,
     DWORD iQuality, DWORD iPitchAndFamily, LPCSTR pszFaceName)
 {
+#if _DEBUG
+    FILE* log = nullptr;
+    if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
+        fprintf(log, "GdiProportionalizer::CreateFontAHook() \n");
+        fclose(log);
+    }
+#endif
+
     return CreateFontWHook(
         cHeight,
         cWidth,
@@ -84,6 +270,14 @@ HFONT GdiProportionalizer::CreateFontAHook(int cHeight, int cWidth, int cEscapem
 
 HFONT GdiProportionalizer::CreateFontIndirectAHook(LOGFONTA* pFontInfo)
 {
+#if _DEBUG
+    FILE* log = nullptr;
+    if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
+        fprintf(log, "GdiProportionalizer::CreateFontIndirectAHook() \n");
+        fclose(log);
+    }
+#endif
+
     return CreateFontWHook(
         pFontInfo->lfHeight,
         pFontInfo->lfWidth,
@@ -106,6 +300,14 @@ HFONT GdiProportionalizer::CreateFontWHook(int cHeight, int cWidth, int cEscapem
     DWORD bItalic, DWORD bUnderline, DWORD bStrikeOut, DWORD iCharSet, DWORD iOutPrecision, DWORD iClipPrecision,
     DWORD iQuality, DWORD iPitchAndFamily, LPCWSTR pszFaceName)
 {
+#if _DEBUG
+    FILE* log = nullptr;
+    if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
+        fprintf(log, "GdiProportionalizer::CreateFontWHook() \n");
+        fclose(log);
+    }
+#endif
+
     LOGFONTW fontInfo;
     fontInfo.lfHeight = cHeight;
     fontInfo.lfWidth = cWidth;
@@ -126,6 +328,14 @@ HFONT GdiProportionalizer::CreateFontWHook(int cHeight, int cWidth, int cEscapem
 
 HFONT GdiProportionalizer::CreateFontIndirectWHook(LOGFONTW* pFontInfo)
 {
+#if _DEBUG
+    FILE* log = nullptr;
+    if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
+        fprintf(log, "GdiProportionalizer::CreateFontIndirectWHook() \n");
+        fclose(log);
+    }
+#endif
+
     if (CustomFontName.empty())
     {
         LastFontName = pFontInfo->lfFaceName;
@@ -138,6 +348,14 @@ HFONT GdiProportionalizer::CreateFontIndirectWHook(LOGFONTW* pFontInfo)
 
 HGDIOBJ GdiProportionalizer::SelectObjectHook(HDC hdc, HGDIOBJ obj)
 {
+#if _DEBUG
+    FILE* log = nullptr;
+    if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
+        fprintf(log, "GdiProportionalizer::SelectObjectHook() \n");
+        fclose(log);
+    }
+#endif
+
     Font* pFont = FontManager.GetFont(static_cast<HFONT>(obj));
     if (pFont != nullptr)
         CurrentFonts[hdc] = pFont;
@@ -147,6 +365,14 @@ HGDIOBJ GdiProportionalizer::SelectObjectHook(HDC hdc, HGDIOBJ obj)
 
 BOOL GdiProportionalizer::DeleteObjectHook(HGDIOBJ obj)
 {
+#if _DEBUG
+    FILE* log = nullptr;
+    if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
+        fprintf(log, "GdiProportionalizer::DeleteObjectHook() \n");
+        fclose(log);
+    }
+#endif
+
     Font* pFont = FontManager.GetFont(static_cast<HFONT>(obj));
     if (pFont != nullptr)
         return false;
@@ -156,18 +382,42 @@ BOOL GdiProportionalizer::DeleteObjectHook(HGDIOBJ obj)
 
 BOOL GdiProportionalizer::GetTextExtentPointAHook(HDC hdc, LPCSTR lpString, int c, LPSIZE lpsz)
 {
+#if _DEBUG
+    FILE* log = nullptr;
+    if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
+        fprintf(log, "GdiProportionalizer::GetTextExtentPointAHook() \n");
+        fclose(log);
+    }
+#endif
+
     wstring str = SjisTunnelEncoding::Decode(lpString, c);
     return GetTextExtentPointW(hdc, str.c_str(), str.size(), lpsz);
 }
 
 BOOL GdiProportionalizer::GetTextExtentPoint32AHook(HDC hdc, LPCSTR lpString, int c, LPSIZE psizl)
 {
+#if _DEBUG
+    FILE* log = nullptr;
+    if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
+        fprintf(log, "GdiProportionalizer::GetTextExtentPoint32AHook() \n");
+        fclose(log);
+    }
+#endif
+
     wstring str = SjisTunnelEncoding::Decode(lpString, c);
     return GetTextExtentPoint32W(hdc, str.c_str(), str.size(), psizl);
 }
 
 BOOL GdiProportionalizer::TextOutAHook(HDC dc, int x, int y, LPCSTR pString, int count)
 {
+#if _DEBUG
+    FILE* log = nullptr;
+    if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
+        fprintf(log, "GdiProportionalizer::TextOutAHook() \n");
+        fclose(log);
+    }
+#endif
+    
     wstring text = SjisTunnelEncoding::Decode(pString, count);
     Font* pFont = CurrentFonts[dc];
     if (pFont == nullptr)
@@ -197,11 +447,28 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
         uChar >>= 8;
     }
     wstring wstr = SjisTunnelEncoding::Decode(str);
+
+#if _DEBUG
+    FILE* log = nullptr;
+    if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
+        fprintf(log, "GdiProportionalizer::GetGlyphOutlineAHook() char: %s, 0x%x\n", wstr.c_str(), wstr[0]);
+        fclose(log);
+    }
+#endif
+
     return GetGlyphOutlineW(hdc, wstr[0], fuFormat, lpgm, cjBuffer, pvBuffer, lpmat2);
 }
 
 LOGFONTA GdiProportionalizer::ConvertLogFontWToA(const LOGFONTW& logFontW)
 {
+#if _DEBUG
+    FILE* log = nullptr;
+    if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
+        fprintf(log, "GdiProportionalizer::ConvertLogFontWToA() \n");
+        fclose(log);
+    }
+#endif
+
     LOGFONTA logFontA;
     logFontA.lfCharSet = logFontW.lfCharSet;
     logFontA.lfClipPrecision = logFontW.lfClipPrecision;
@@ -222,6 +489,14 @@ LOGFONTA GdiProportionalizer::ConvertLogFontWToA(const LOGFONTW& logFontW)
 
 LOGFONTW GdiProportionalizer::ConvertLogFontAToW(const LOGFONTA& logFontA)
 {
+#if _DEBUG
+    FILE* log = nullptr;
+    if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
+        fprintf(log, "GdiProportionalizer::ConvertLogFontAToW() \n");
+        fclose(log);
+    }
+#endif
+
     LOGFONTW logFontW;
     logFontW.lfCharSet = logFontA.lfCharSet;
     logFontW.lfClipPrecision = logFontA.lfClipPrecision;
@@ -242,6 +517,14 @@ LOGFONTW GdiProportionalizer::ConvertLogFontAToW(const LOGFONTA& logFontA)
 
 TEXTMETRICA GdiProportionalizer::ConvertTextMetricWToA(const TEXTMETRICW& textMetricW)
 {
+#if _DEBUG
+    FILE* log = nullptr;
+    if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
+        fprintf(log, "GdiProportionalizer::ConvertTextMetricWToA() \n");
+        fclose(log);
+    }
+#endif
+
     TEXTMETRICA textMetricA;
     textMetricA.tmAscent = textMetricW.tmAscent;
     textMetricA.tmAveCharWidth = textMetricW.tmAveCharWidth;
