@@ -30,6 +30,13 @@ namespace VNTextPatch.Shared.Util
 
         public ProportionalWordWrapper(string fontName, int fontSize, bool bold, int lineWidth)
         {
+            /*
+            fontName = "Arial";
+            fontSize = 10;
+            bold = false;
+            lineWidth = 600;
+            */
+
             _dc = NativeMethods.GetDC(IntPtr.Zero);
             _font = NativeMethods.CreateFontW(
                 fontSize,

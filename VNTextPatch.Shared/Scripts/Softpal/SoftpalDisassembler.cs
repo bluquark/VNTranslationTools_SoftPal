@@ -202,6 +202,7 @@ namespace VNTextPatch.Shared.Scripts.Softpal
         {
             try
             {
+//                if (_stack.Count < 3)
                 if (_stack.Count < 4)
                     return;
 
@@ -262,6 +263,7 @@ namespace VNTextPatch.Shared.Scripts.Softpal
                         case 0x20011:
                         case 0x20012:
                         case 0x20013:
+//                        case 0x20014:
                             return true;
 
                         default:
