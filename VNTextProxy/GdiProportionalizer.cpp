@@ -438,6 +438,59 @@ BOOL GdiProportionalizer::TextOutAHook(HDC dc, int x, int y, LPCSTR pString, int
     return TextOutW(dc, x, y, text.data(), text.size());
 }
 
+std::string FuFormatToString(UINT fuFormat)
+{
+    std::ostringstream oss;
+
+    // --- Main formats (mutually exclusive) ---
+    switch (fuFormat & 0xFF) { // low byte stores the main mode
+    case GGO_METRICS:       oss << "GGO_METRICS"; break;
+    case GGO_BITMAP:        oss << "GGO_BITMAP"; break;
+    case GGO_NATIVE:        oss << "GGO_NATIVE"; break;
+    case GGO_BEZIER:        oss << "GGO_BEZIER"; break;
+    case GGO_GRAY2_BITMAP:  oss << "GGO_GRAY2_BITMAP"; break;
+    case GGO_GRAY4_BITMAP:  oss << "GGO_GRAY4_BITMAP"; break;
+    case GGO_GRAY8_BITMAP:  oss << "GGO_GRAY8_BITMAP"; break;
+    default:                oss << "UNKNOWN_FORMAT(" << (fuFormat & 0xFF) << ")"; break;
+    }
+
+    // --- Option flags (may combine) ---
+    if (fuFormat & GGO_GLYPH_INDEX)
+        oss << " | GGO_GLYPH_INDEX";
+
+    if (fuFormat & GGO_UNHINTED)
+        oss << " | GGO_UNHINTED";
+
+    return oss.str();
+}
+
+
+std::string GlyphMetricsToString(const GLYPHMETRICS* gm)
+{
+    if (!gm) return "NULL";
+
+    std::ostringstream oss;
+    oss << "GLYPHMETRICS { "
+        << "gmBlackBoxX=" << gm->gmBlackBoxX << ", "
+        << "gmBlackBoxY=" << gm->gmBlackBoxY << ", "
+        << "gmptGlyphOrigin=("
+        << gm->gmptGlyphOrigin.x << ", "
+        << gm->gmptGlyphOrigin.y << "), "
+        << "gmCellIncX=" << gm->gmCellIncX << ", "
+        << "gmCellIncY=" << gm->gmCellIncY
+        << " }";
+
+    return oss.str();
+}
+
+struct GlyphState {
+    double penXF;         // floating pen x
+    int    penXI;         // integer pen x as seen by the app (what your gmCellIncX drives)
+    double carry;         // fractional error accumulator for advances
+    WCHAR  prevGI;        // previous glyph index for kerning (optional)
+    // caches: ABCFLOAT for glyphs, kerning table, text metricsc
+};
+
 DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuFormat, LPGLYPHMETRICS lpgm, DWORD cjBuffer, LPVOID pvBuffer, MAT2* lpmat2)
 {
     string str;
@@ -448,15 +501,46 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
     }
     wstring wstr = SjisTunnelEncoding::Decode(str);
 
+//    fuFormat |= GGO_UNHINTED;
+
+    UINT ch = wstr[0];
+/*    if (wstr[0] == 0x9593) {
+        ch = 0x20;
+    }
+    */
+//    if (wstr[0] == '|') {
+//        ch = 0x20;
+//    }
+    
+
+    DWORD ret = GetGlyphOutlineW(hdc, ch, fuFormat, lpgm, cjBuffer, pvBuffer, lpmat2);
+
+    static int numSpaceCalls;
+
+//    if (lpgm->gmCellIncX > 3)
+//      lpgm->gmCellIncX -= 3;
+
+    if (wstr[0] == 'm') {
+//        lpgm->gmBlackBoxX += 5;
+//        lpgm->gmptGlyphOrigin.x -= 2;
+    }
+
 #if _DEBUG
     FILE* log = nullptr;
     if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
-        fprintf(log, "GdiProportionalizer::GetGlyphOutlineAHook() char: %s, 0x%x\n", wstr.c_str(), wstr[0]);
+        fprintf(log, "GdiProportionalizer::GetGlyphOutlineAHook() fuFormat: %s, char: %s, 0x%x, pvBuffer: %d, cjBuffer: %d, metricsResult: %s\n", FuFormatToString(fuFormat).c_str(), reinterpret_cast<const char*>(wstr.c_str()), wstr[0], pvBuffer != NULL, cjBuffer, GlyphMetricsToString(lpgm).c_str());
         fclose(log);
     }
 #endif
 
-    return GetGlyphOutlineW(hdc, wstr[0], fuFormat, lpgm, cjBuffer, pvBuffer, lpmat2);
+    if (wstr[0] == '|') {
+        lpgm->gmCellIncX -= 3;
+        if (pvBuffer && cjBuffer >= ret) {
+            memset(pvBuffer, 0, ret);
+        }
+    }
+
+    return ret;
 }
 
 LOGFONTA GdiProportionalizer::ConvertLogFontWToA(const LOGFONTW& logFontW)

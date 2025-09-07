@@ -67,14 +67,19 @@ namespace VNTextPatch.Shared.Scripts.Softpal
             BinaryWriter textWriter = new BinaryWriter(textStream);
             textWriter.Write(_text);
 
+            int iteration = 0;
             using IEnumerator<ScriptString> stringEnumerator = strings.GetEnumerator();
             foreach (TextOperand operand in _textOperands)
             {
+                iteration++;
+
                 if (!stringEnumerator.MoveNext())
                     throw new InvalidDataException("Not enough lines in translation");
 
                 if (stringEnumerator.Current.Type != operand.Type)
-                    throw new InvalidDataException("String type mismatch");
+                    throw new InvalidDataException(
+    $"String type mismatch at iteration #{iteration} " +
+    $"(operand offset 0x{operand.Offset:X}): expected {operand.Type}, got {stringEnumerator.Current.Type}, text={stringEnumerator.Current.Text}");
 
                 string text = stringEnumerator.Current.Text;
                 text = ProportionalWordWrapper.Default.Wrap(text);
