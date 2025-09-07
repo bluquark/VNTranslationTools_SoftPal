@@ -1,6 +1,16 @@
-#include "pch.h"
+﻿#include "pch.h"
 
 using namespace std;
+
+struct GlyphState {
+    double penXF;         // floating pen x
+    int    penXI;         // integer pen x as seen by the app (what gmCellIncX drives)
+    double carry;         // fractional error accumulator for advances
+    double ACarry;        // residual for the left-side A component
+    WCHAR  prevCh;        // previous character for kerning (optional)
+    // caches: ABCFLOAT for glyphs, kerning table, text metrics…
+} state;
+
 
 /*
 Example call sequence:
@@ -355,6 +365,11 @@ HGDIOBJ GdiProportionalizer::SelectObjectHook(HDC hdc, HGDIOBJ obj)
         fclose(log);
     }
 #endif
+    state.penXF = 0.0;
+    state.penXI = 0;
+    state.carry = 0.0;
+    state.ACarry = 0.0;
+    state.prevCh = 0xFFFF;
 
     Font* pFont = FontManager.GetFont(static_cast<HFONT>(obj));
     if (pFont != nullptr)
@@ -483,13 +498,6 @@ std::string GlyphMetricsToString(const GLYPHMETRICS* gm)
     return oss.str();
 }
 
-struct GlyphState {
-    double penXF;         // floating pen x
-    int    penXI;         // integer pen x as seen by the app (what your gmCellIncX drives)
-    double carry;         // fractional error accumulator for advances
-    WCHAR  prevGI;        // previous glyph index for kerning (optional)
-    // caches: ABCFLOAT for glyphs, kerning table, text metrics�c
-};
 
 DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuFormat, LPGLYPHMETRICS lpgm, DWORD cjBuffer, LPVOID pvBuffer, MAT2* lpmat2)
 {
@@ -501,21 +509,9 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
     }
     wstring wstr = SjisTunnelEncoding::Decode(str);
 
-//    fuFormat |= GGO_UNHINTED;
-
     UINT ch = wstr[0];
-/*    if (wstr[0] == 0x9593) {
-        ch = 0x20;
-    }
-    */
-//    if (wstr[0] == '|') {
-//        ch = 0x20;
-//    }
-    
 
     DWORD ret = GetGlyphOutlineW(hdc, ch, fuFormat, lpgm, cjBuffer, pvBuffer, lpmat2);
-
-    static int numSpaceCalls;
 
 //    if (lpgm->gmCellIncX > 3)
 //      lpgm->gmCellIncX -= 3;
@@ -533,11 +529,52 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
     }
 #endif
 
+    ABCFLOAT abc;
+    GetCharABCWidthsFloatW(hdc, ch, ch, &abc);
+//    double kern = GetKernIfAny(hdc, state.prevCh, ch);// optional
+    double kern = 0.0;
+
+    // 2) Integer-approx the floating advance
+    double advanceF = abc.abcfA + abc.abcfB + abc.abcfC + kern;
+    double withCarry = advanceF + state.carry;
+    int    advOut = (int)floor(withCarry + 0.5);
+    state.carry = withCarry - advOut;
+
+    /*
+    // 3) Optional A nudge (Tier 2)
+    int nudge = 0;
+    if (EnableANudge) {
+        double aWithCarry = frac(abc.abcfA) + state.ACarry;     // frac(x) = x - floor(x)
+        nudge = (int)floor(aWithCarry + 0.5);                   // −1, 0, +1 in practice
+        if (pvBuffer != NULL) {
+            state.ACarry = aWithCarry - nudge;
+        }
+
+        // Shift bitmap horizontally by `nudge` cols (add/remove blank cols)
+        ShiftGrayBitmapHoriz(lpv, &gmSys, nudge);               // updates lpv + gmSys.gmBlackBoxX
+
+        // Move origin so caller draws it where we intend
+        gmSys.gmptGlyphOrigin.x += nudge;
+    }
+    */
+
     if (wstr[0] == '|') {
-        lpgm->gmCellIncX -= 3;
+        advOut -= 3;
         if (pvBuffer && cjBuffer >= ret) {
             memset(pvBuffer, 0, ret);
         }
+    }
+
+
+    // 4) Publish adjusted metrics to the caller
+//    *lpgm = gmSys;
+    lpgm->gmCellIncX = advOut;
+
+    // 5) Advance your internal pens for next call
+    if (pvBuffer != NULL) {
+        state.penXF += advanceF;
+        state.penXI += advOut;
+        state.prevCh = ch;
     }
 
     return ret;
