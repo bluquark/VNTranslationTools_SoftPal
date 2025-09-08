@@ -53,10 +53,12 @@ namespace VNTextPatch.Shared.Util
         public const int SHIFTJIS_CHARSET = 128;
 
         public const int OUT_DEFAULT_PRECIS = 0;
+        public const int OUT_TT_ONLY_PRECIS = 7;
         public const int CLIP_DEFAULT_PRECIS = 0;
 
         public const int DEFAULT_QUALITY = 0;
         public const int ANTIALIASED_QUALITY = 4;
+        public const int CLEARTYPE_NATURAL_QUALITY = 6;
 
         public const int DEFAULT_PITCH = 0;
         public const int FF_DONTCARE = 0 << 4;
