@@ -48,9 +48,11 @@ namespace VNTextPatch.Shared.Util
                 false,
                 false,
                 NativeMethods.ANSI_CHARSET,
-                NativeMethods.OUT_DEFAULT_PRECIS,
+//                NativeMethods.OUT_DEFAULT_PRECIS,
+                NativeMethods.OUT_TT_ONLY_PRECIS,
                 NativeMethods.CLIP_DEFAULT_PRECIS,
-                NativeMethods.DEFAULT_QUALITY,
+                //                NativeMethods.DEFAULT_QUALITY,
+                NativeMethods.CLEARTYPE_NATURAL_QUALITY,
                 NativeMethods.DEFAULT_PITCH | NativeMethods.FF_DONTCARE,
                 fontName
             );
