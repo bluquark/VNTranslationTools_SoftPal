@@ -16,6 +16,8 @@ struct GlyphState {
 } state;
 
 
+std::unordered_map<uint32_t, int> kernAmounts;
+
 /*
 Example call sequence:
 
@@ -518,14 +520,6 @@ HFONT GdiProportionalizer::CreateFontIndirectWHook(LOGFONTW* pFontInfo)
     }
 #endif
 
-    /*             int numKerningPairs = NativeMethods.GetKerningPairsW(_dc, 0, null);
-            NativeMethods.KERNINGPAIR[] kerningPairs = new NativeMethods.KERNINGPAIR[numKerningPairs];
-            NativeMethods.GetKerningPairsW(_dc, kerningPairs.Length, kerningPairs);
-            foreach (NativeMethods.KERNINGPAIR pair in kerningPairs)
-            {
-                _kernAmounts[pair.wFirst | (pair.wSecond << 16)] = pair.iKernAmount;
-            }*/
-
     return FontManager.FetchFont(CustomFontName, pFontInfo->lfHeight, Bold, Italic, Underline)->GetGdiHandle();
 }
 
@@ -534,7 +528,7 @@ HGDIOBJ GdiProportionalizer::SelectObjectHook(HDC hdc, HGDIOBJ obj)
 #if _DEBUG
     FILE* log = nullptr;
     if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
-        fprintf(log, "GdiProportionalizer::SelectObjectHook() \n");
+        fprintf(log, "GdiProportionalizer::SelectObjectHook()\n");
         fclose(log);
     }
 #endif
@@ -548,7 +542,53 @@ HGDIOBJ GdiProportionalizer::SelectObjectHook(HDC hdc, HGDIOBJ obj)
     if (pFont != nullptr)
         CurrentFonts[hdc] = pFont;
 
-    return SelectObject(hdc, obj);
+    HGDIOBJ ret = SelectObject(hdc, obj);
+
+    DWORD count = GetKerningPairsW(hdc, 0, nullptr);
+    if (count == 0) {
+#if _DEBUG
+        FILE* log = nullptr;
+        if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
+            fprintf(log, "A: 0 kerning pairs\n");
+            fclose(log);
+        }
+#endif
+        // No pairs or error; optionally check GetLastError()
+        return ret;
+    }
+
+    // Allocate and fetch the pairs
+    std::vector<KERNINGPAIR> pairs(count);
+    DWORD got = GetKerningPairsW(hdc, count, pairs.data());
+    if (got == 0) {
+#if _DEBUG
+        FILE* log = nullptr;
+        if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
+            fprintf(log, "B: 0 kerning pairs\n");
+            fclose(log);
+        }
+#endif
+        // Failed; optionally check GetLastError()
+        return ret;
+    }
+
+    // Store as key = wFirst | (wSecond << 16), value = iKernAmount
+    kernAmounts.reserve(kernAmounts.size() + got);
+    for (DWORD i = 0; i < got; ++i) {
+        const KERNINGPAIR& kp = pairs[i];
+/*#if _DEBUG
+        FILE* log = nullptr;
+        if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
+            fprintf(log, "Kerning pair: %d, %d, %d\n", kp.wFirst, kp.wSecond, kp.iKernAmount);
+            fclose(log);
+        }
+#endif*/
+        uint32_t key = static_cast<uint32_t>(kp.wFirst)
+            | (static_cast<uint32_t>(kp.wSecond) << 16);
+        kernAmounts[key] = static_cast<int>(kp.iKernAmount);
+    }
+
+    return ret;
 }
 
 BOOL GdiProportionalizer::DeleteObjectHook(HGDIOBJ obj)
@@ -772,8 +812,11 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
 
     ABCFLOAT abc;
     GetCharABCWidthsFloatW(hdc, ch, ch, &abc);
-    //    double kern = GetKernIfAny(hdc, state.prevCh, ch);// optional
-    double kern = 0.0;
+
+    uint32_t kernKey = static_cast<uint32_t>(state.prevCh) | (static_cast<uint32_t>(ch) << 16);
+    double kern = kernAmounts[kernKey];
+
+//    double kern = 0.0;
 
     // 2) Integer-approx the floating advance
     double advanceF = abc.abcfA + abc.abcfB + abc.abcfC + kern;
@@ -792,7 +835,7 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
 #if _DEBUG
     FILE* log = nullptr;
     if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
-        fprintf(log, "GdiProportionalizer::GetGlyphOutlineAHook() fuFormat: %s, char: %s, 0x%x, pvBuffer: %d, cjBuffer: %d, metricsResult: %s, nudge: %d, advOut: %d, carry: %f, ACarry: %f, a: %f, b: %f, c: %f\n", FuFormatToString(fuFormat).c_str(), reinterpret_cast<const char*>(wstr.c_str()), wstr[0], pvBuffer != NULL, cjBuffer, GlyphMetricsToString(lpgm).c_str(), nudge, advOut, state.carry, state.ACarry, abc.abcfA, abc.abcfB, abc.abcfC);
+        fprintf(log, "GdiProportionalizer::GetGlyphOutlineAHook() fuFormat: %s, char: %s, 0x%x, pvBuffer: %d, cjBuffer: %d, metricsResult: %s, nudge: %d, advOut: %d, carry: %f, ACarry: %f, a: %f, b: %f, c: %f, kern: %f\n", FuFormatToString(fuFormat).c_str(), reinterpret_cast<const char*>(wstr.c_str()), wstr[0], pvBuffer != NULL, cjBuffer, GlyphMetricsToString(lpgm).c_str(), nudge, advOut, state.carry, state.ACarry, abc.abcfA, abc.abcfB, abc.abcfC, kern);
         fclose(log);
     }
 #endif
