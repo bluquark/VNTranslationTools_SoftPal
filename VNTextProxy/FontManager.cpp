@@ -25,9 +25,11 @@ Font* FontManager::FetchFont(const wstring& faceName, int height, bool bold, boo
     info.lfClipPrecision = CLIP_DEFAULT_PRECIS;
     info.lfEscapement = 0;
     info.lfOrientation = 0;
-    info.lfOutPrecision = OUT_DEFAULT_PRECIS;
+//    info.lfOutPrecision = OUT_DEFAULT_PRECIS;
+    info.lfOutPrecision = OUT_TT_ONLY_PRECIS;
     info.lfPitchAndFamily = DEFAULT_PITCH;
-    info.lfQuality = DEFAULT_QUALITY;
+//    info.lfQuality = DEFAULT_QUALITY;
+    info.lfQuality = CLEARTYPE_NATURAL_QUALITY;
     info.lfStrikeOut = false;
 
     return FetchFont(info);
