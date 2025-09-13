@@ -82,8 +82,10 @@ namespace VNTextPatch.Shared.Scripts.Softpal
     $"(operand offset 0x{operand.Offset:X}): expected {operand.Type}, got {stringEnumerator.Current.Type}, text={stringEnumerator.Current.Text}");
 
                 string text = stringEnumerator.Current.Text;
+                text = text.Replace("--", "―"); // em dash replacement (needs at least one real em dash in the script for sjis mapping)
                 text = ProportionalWordWrapper.Default.Wrap(text);
                 text = text.Replace("\r\n", "<br>");
+                text = text.Replace(" ", "|");  // space replacement with pipe character (needs special handling in the font DLL)
 
                 int newAddr = (int)textStream.Length;
                 textWriter.Write(0);
