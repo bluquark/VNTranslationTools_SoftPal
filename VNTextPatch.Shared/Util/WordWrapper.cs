@@ -14,6 +14,8 @@ namespace VNTextPatch.Shared.Util
         {
             StringBuilder result = new StringBuilder();
 
+            int numLineBreaks = 0;
+
             foreach (string line in text.Split(new[] { lineBreak }, StringSplitOptions.None))
             {
                 int lineStartPos = 0;
@@ -23,7 +25,18 @@ namespace VNTextPatch.Shared.Util
                         continue;
 
                     if (result.Length > 0)
+                    {
                         result.Append(lineBreak);
+                        numLineBreaks++;
+                    }
+
+                    if (numLineBreaks == 3)
+                    {
+                        Console.WriteLine("Warning: more than 3 lines in string: " + text);
+                    }
+
+                    if (numLineBreaks > 3)
+                        return result.ToString(); // Cut off text after 4th line to prevent crashing
 
                     result.Append(line, lineStartPos, lineEndPos - lineStartPos);
 
@@ -33,7 +46,9 @@ namespace VNTextPatch.Shared.Util
                         lineStartPos++;
                     }
                 }
+                numLineBreaks++;
             }
+
 
             return result.ToString();
         }
