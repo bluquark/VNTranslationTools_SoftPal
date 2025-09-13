@@ -754,17 +754,17 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
 
     DWORD ret = GetGlyphOutlineW(hdc, ch, fuFormat, lpgm, cjBuffer, pvBuffer, lpmat2);
 
-//    if (lpgm->gmCellIncX > 3)
-//      lpgm->gmCellIncX -= 3;
+    //    if (lpgm->gmCellIncX > 3)
+    //      lpgm->gmCellIncX -= 3;
 
     if (wstr[0] == 'm') {
-//        lpgm->gmBlackBoxX += 5;
-//        lpgm->gmptGlyphOrigin.x -= 2;
+        //        lpgm->gmBlackBoxX += 5;
+        //        lpgm->gmptGlyphOrigin.x -= 2;
     }
 
     ABCFLOAT abc;
     GetCharABCWidthsFloatW(hdc, ch, ch, &abc);
-//    double kern = GetKernIfAny(hdc, state.prevCh, ch);// optional
+    //    double kern = GetKernIfAny(hdc, state.prevCh, ch);// optional
     double kern = 0.0;
 
     // 2) Integer-approx the floating advance
@@ -801,7 +801,12 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
             memset(pvBuffer, 0, ret);
         }
     }
-
+    else if (wstr[0] == 'F' || wstr[0] == 'e') {
+        advOut -= 1;
+    }
+    else {
+        advOut -= 1;
+    }
 
     // 4) Publish adjusted metrics to the caller
 //    *lpgm = gmSys;
