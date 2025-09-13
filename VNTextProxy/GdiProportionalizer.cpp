@@ -518,6 +518,14 @@ HFONT GdiProportionalizer::CreateFontIndirectWHook(LOGFONTW* pFontInfo)
     }
 #endif
 
+    /*             int numKerningPairs = NativeMethods.GetKerningPairsW(_dc, 0, null);
+            NativeMethods.KERNINGPAIR[] kerningPairs = new NativeMethods.KERNINGPAIR[numKerningPairs];
+            NativeMethods.GetKerningPairsW(_dc, kerningPairs.Length, kerningPairs);
+            foreach (NativeMethods.KERNINGPAIR pair in kerningPairs)
+            {
+                _kernAmounts[pair.wFirst | (pair.wSecond << 16)] = pair.iKernAmount;
+            }*/
+
     return FontManager.FetchFont(CustomFontName, pFontInfo->lfHeight, Bold, Italic, Underline)->GetGdiHandle();
 }
 
