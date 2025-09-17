@@ -301,6 +301,11 @@ namespace VNTextPatch
                     }
                 }
 
+                if (options.Format == null)
+                {
+                    options.Format = "softpal";
+                }
+
                 unnamedArgs = unnamedArgsList.ToArray();
                 return options;
             }
