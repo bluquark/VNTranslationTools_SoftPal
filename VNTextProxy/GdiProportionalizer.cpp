@@ -9,12 +9,9 @@ using namespace std;
 struct GlyphState {
     double penXF;         // floating pen x
     int    penXI;         // integer pen x as seen by the app (what gmCellIncX drives)
-    double carry;         // fractional error accumulator for advances
-    double ACarry;        // residual for the left-side A component
     WCHAR  prevCh;        // previous character for kerning (optional)
     // caches: ABCFLOAT for glyphs, kerning table, text metrics…
 } state;
-
 
 std::unordered_map<uint32_t, int> kernAmounts;
 
@@ -25,33 +22,6 @@ GdiProportionalizer::CreateFontAHook()
 GdiProportionalizer::CreateFontWHook()
 GdiProportionalizer::CreateFontIndirectWHook()
 GdiProportionalizer::SelectObjectHook()
-GdiProportionalizer::GetGlyphOutlineAHook() char: O, 0x4f
-GdiProportionalizer::GetGlyphOutlineAHook() char: O, 0x4f
-GdiProportionalizer::GetGlyphOutlineAHook() char: O, 0x4f
-GdiProportionalizer::GetGlyphOutlineAHook() char: r, 0x72
-GdiProportionalizer::GetGlyphOutlineAHook() char: r, 0x72
-GdiProportionalizer::GetGlyphOutlineAHook() char: r, 0x72
-GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
-GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
-GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
-GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
-GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
-GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
-GdiProportionalizer::GetGlyphOutlineAHook() char: v, 0x76
-GdiProportionalizer::GetGlyphOutlineAHook() char: v, 0x76
-GdiProportionalizer::GetGlyphOutlineAHook() char: v, 0x76
-GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
-GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
-GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
-GdiProportionalizer::GetGlyphOutlineAHook() char: n, 0x6e
-GdiProportionalizer::GetGlyphOutlineAHook() char: n, 0x6e
-GdiProportionalizer::GetGlyphOutlineAHook() char: n, 0x6e
-GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
-GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
-GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
-GdiProportionalizer::GetGlyphOutlineAHook() char: ", 0x22
-GdiProportionalizer::GetGlyphOutlineAHook() char: ", 0x22
-GdiProportionalizer::GetGlyphOutlineAHook() char: ", 0x22
 GdiProportionalizer::GetGlyphOutlineAHook() char: W, 0x57
 GdiProportionalizer::GetGlyphOutlineAHook() char: W, 0x57
 GdiProportionalizer::GetGlyphOutlineAHook() char: W, 0x57
@@ -64,99 +34,6 @@ GdiProportionalizer::GetGlyphOutlineAHook() char: a, 0x61
 GdiProportionalizer::GetGlyphOutlineAHook() char: t, 0x74
 GdiProportionalizer::GetGlyphOutlineAHook() char: t, 0x74
 GdiProportionalizer::GetGlyphOutlineAHook() char: t, 0x74
-GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
-GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
-GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
-GdiProportionalizer::GetGlyphOutlineAHook() char: d, 0x64
-GdiProportionalizer::GetGlyphOutlineAHook() char: d, 0x64
-GdiProportionalizer::GetGlyphOutlineAHook() char: d, 0x64
-GdiProportionalizer::GetGlyphOutlineAHook() char: i, 0x69
-GdiProportionalizer::GetGlyphOutlineAHook() char: i, 0x69
-GdiProportionalizer::GetGlyphOutlineAHook() char: i, 0x69
-GdiProportionalizer::GetGlyphOutlineAHook() char: d, 0x64
-GdiProportionalizer::GetGlyphOutlineAHook() char: d, 0x64
-GdiProportionalizer::GetGlyphOutlineAHook() char: d, 0x64
-GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
-GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
-GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
-GdiProportionalizer::GetGlyphOutlineAHook() char: y, 0x79
-GdiProportionalizer::GetGlyphOutlineAHook() char: y, 0x79
-GdiProportionalizer::GetGlyphOutlineAHook() char: y, 0x79
-GdiProportionalizer::GetGlyphOutlineAHook() char: o, 0x6f
-GdiProportionalizer::GetGlyphOutlineAHook() char: o, 0x6f
-GdiProportionalizer::GetGlyphOutlineAHook() char: o, 0x6f
-GdiProportionalizer::GetGlyphOutlineAHook() char: u, 0x75
-GdiProportionalizer::GetGlyphOutlineAHook() char: u, 0x75
-GdiProportionalizer::GetGlyphOutlineAHook() char: u, 0x75
-GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
-GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
-GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
-GdiProportionalizer::GetGlyphOutlineAHook() char: h, 0x68
-GdiProportionalizer::GetGlyphOutlineAHook() char: h, 0x68
-GdiProportionalizer::GetGlyphOutlineAHook() char: h, 0x68
-GdiProportionalizer::GetGlyphOutlineAHook() char: a, 0x61
-GdiProportionalizer::GetGlyphOutlineAHook() char: a, 0x61
-GdiProportionalizer::GetGlyphOutlineAHook() char: a, 0x61
-GdiProportionalizer::GetGlyphOutlineAHook() char: v, 0x76
-GdiProportionalizer::GetGlyphOutlineAHook() char: v, 0x76
-GdiProportionalizer::GetGlyphOutlineAHook() char: v, 0x76
-GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
-GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
-GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
-GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
-GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
-GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
-GdiProportionalizer::GetGlyphOutlineAHook() char: t, 0x74
-GdiProportionalizer::GetGlyphOutlineAHook() char: t, 0x74
-GdiProportionalizer::GetGlyphOutlineAHook() char: t, 0x74
-GdiProportionalizer::GetGlyphOutlineAHook() char: o, 0x6f
-GdiProportionalizer::GetGlyphOutlineAHook() char: o, 0x6f
-GdiProportionalizer::GetGlyphOutlineAHook() char: o, 0x6f
-GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
-GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
-GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
-GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
-GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
-GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
-GdiProportionalizer::GetGlyphOutlineAHook() char: a, 0x61
-GdiProportionalizer::GetGlyphOutlineAHook() char: a, 0x61
-GdiProportionalizer::GetGlyphOutlineAHook() char: a, 0x61
-GdiProportionalizer::GetGlyphOutlineAHook() char: t, 0x74
-GdiProportionalizer::GetGlyphOutlineAHook() char: t, 0x74
-GdiProportionalizer::GetGlyphOutlineAHook() char: t, 0x74
-GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
-GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
-GdiProportionalizer::GetGlyphOutlineAHook() char:  , 0x20
-GdiProportionalizer::GetGlyphOutlineAHook() char: y, 0x79
-GdiProportionalizer::GetGlyphOutlineAHook() char: y, 0x79
-GdiProportionalizer::GetGlyphOutlineAHook() char: y, 0x79
-GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
-GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
-GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
-GdiProportionalizer::GetGlyphOutlineAHook() char: s, 0x73
-GdiProportionalizer::GetGlyphOutlineAHook() char: s, 0x73
-GdiProportionalizer::GetGlyphOutlineAHook() char: s, 0x73
-GdiProportionalizer::GetGlyphOutlineAHook() char: t, 0x74
-GdiProportionalizer::GetGlyphOutlineAHook() char: t, 0x74
-GdiProportionalizer::GetGlyphOutlineAHook() char: t, 0x74
-GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
-GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
-GdiProportionalizer::GetGlyphOutlineAHook() char: e, 0x65
-GdiProportionalizer::GetGlyphOutlineAHook() char: r, 0x72
-GdiProportionalizer::GetGlyphOutlineAHook() char: r, 0x72
-GdiProportionalizer::GetGlyphOutlineAHook() char: r, 0x72
-GdiProportionalizer::GetGlyphOutlineAHook() char: d, 0x64
-GdiProportionalizer::GetGlyphOutlineAHook() char: d, 0x64
-GdiProportionalizer::GetGlyphOutlineAHook() char: d, 0x64
-GdiProportionalizer::GetGlyphOutlineAHook() char: a, 0x61
-GdiProportionalizer::GetGlyphOutlineAHook() char: a, 0x61
-GdiProportionalizer::GetGlyphOutlineAHook() char: a, 0x61
-GdiProportionalizer::GetGlyphOutlineAHook() char: y, 0x79
-GdiProportionalizer::GetGlyphOutlineAHook() char: y, 0x79
-GdiProportionalizer::GetGlyphOutlineAHook() char: y, 0x79
-GdiProportionalizer::GetGlyphOutlineAHook() char: ", 0x22
-GdiProportionalizer::GetGlyphOutlineAHook() char: ", 0x22
-GdiProportionalizer::GetGlyphOutlineAHook() char: ", 0x22
 GdiProportionalizer::GetGlyphOutlineAHook() char: ?, 0x3f
 GdiProportionalizer::GetGlyphOutlineAHook() char: ?, 0x3f
 GdiProportionalizer::GetGlyphOutlineAHook() char: ?, 0x3f
@@ -254,136 +131,6 @@ int GdiProportionalizer::EnumFontsProc(const LOGFONTW* lplf, const TEXTMETRICW* 
     return pContext->OriginalProc(&logFontExA.elfEnumLogfontEx.elfLogFont, &textMetricA, dwType, pContext->OriginalContext);
 }
 
-inline const wchar_t* charsetToStr(BYTE cs) {
-    switch (cs) {
-    case ANSI_CHARSET: return L"ANSI";
-    case DEFAULT_CHARSET: return L"DEFAULT";
-    case SYMBOL_CHARSET: return L"SYMBOL";
-    case SHIFTJIS_CHARSET: return L"SHIFTJIS";
-    case HANGUL_CHARSET: return L"HANGUL";
-    case JOHAB_CHARSET: return L"JOHAB";
-    case GB2312_CHARSET: return L"GB2312";
-    case CHINESEBIG5_CHARSET: return L"BIG5";
-    case GREEK_CHARSET: return L"GREEK";
-    case TURKISH_CHARSET: return L"TURKISH";
-    case HEBREW_CHARSET: return L"HEBREW";
-    case ARABIC_CHARSET: return L"ARABIC";
-    case BALTIC_CHARSET: return L"BALTIC";
-    case RUSSIAN_CHARSET: return L"CYRILLIC";
-    case THAI_CHARSET: return L"THAI";
-    case EASTEUROPE_CHARSET: return L"EASTEUROPE";
-    case VIETNAMESE_CHARSET: return L"VIETNAMESE";
-    case MAC_CHARSET: return L"MAC";
-    case OEM_CHARSET: return L"OEM";
-    default: return L"(unknown)";
-    }
-}
-
-inline const wchar_t* outPrecToStr(BYTE p) {
-    switch (p) {
-    case OUT_DEFAULT_PRECIS: return L"DEFAULT";
-    case OUT_STRING_PRECIS: return L"STRING";
-    case OUT_CHARACTER_PRECIS: return L"CHARACTER";
-    case OUT_STROKE_PRECIS: return L"STROKE";
-    case OUT_TT_PRECIS: return L"TRUETYPE";
-    case OUT_DEVICE_PRECIS: return L"DEVICE";
-    case OUT_RASTER_PRECIS: return L"RASTER";
-    case OUT_TT_ONLY_PRECIS: return L"TT_ONLY";
-    case OUT_OUTLINE_PRECIS: return L"OUTLINE";
-    case OUT_SCREEN_OUTLINE_PRECIS: return L"SCREEN_OUTLINE";
-    case OUT_PS_ONLY_PRECIS: return L"POSTSCRIPT_ONLY";
-    default: return L"(unknown)";
-    }
-}
-
-inline std::wstring clipPrecToStr(BYTE p) {
-    std::wstringstream ss;
-    BYTE base = p & 0x0F;
-    switch (base) {
-    case CLIP_DEFAULT_PRECIS: ss << L"DEFAULT"; break;
-    case CLIP_CHARACTER_PRECIS: ss << L"CHARACTER"; break;
-    case CLIP_STROKE_PRECIS: ss << L"STROKE"; break;
-    default: ss << L"(unknown-base:" << int(base) << L")"; break;
-    }
-    // flags
-    if (p & CLIP_LH_ANGLES)     ss << L" | LH_ANGLES";
-    if (p & CLIP_TT_ALWAYS)     ss << L" | TT_ALWAYS";
-    if (p & CLIP_DFA_DISABLE)   ss << L" | DFA_DISABLE";
-    if (p & CLIP_EMBEDDED)      ss << L" | EMBEDDED";
-    return ss.str();
-}
-
-inline const wchar_t* qualityToStr(BYTE q) {
-    switch (q) {
-    case DEFAULT_QUALITY: return L"DEFAULT";
-    case DRAFT_QUALITY: return L"DRAFT";
-    case PROOF_QUALITY: return L"PROOF";
-    case NONANTIALIASED_QUALITY: return L"NONANTIALIASED";
-    case ANTIALIASED_QUALITY: return L"ANTIALIASED";
-    case CLEARTYPE_QUALITY: return L"CLEARTYPE";
-    case CLEARTYPE_NATURAL_QUALITY: return L"CLEARTYPE_NATURAL";
-    default: return L"(unknown)";
-    }
-}
-
-inline const wchar_t* weightToName(LONG w) {
-    switch (w) {
-    case FW_THIN: return L"THIN (100)";
-    case FW_EXTRALIGHT: return L"EXTRALIGHT (200)";
-    case FW_LIGHT: return L"LIGHT (300)";
-    case FW_NORMAL: return L"NORMAL (400)";
-    case FW_MEDIUM: return L"MEDIUM (500)";
-    case FW_SEMIBOLD: return L"SEMIBOLD (600)";
-    case FW_BOLD: return L"BOLD (700)";
-    case FW_EXTRABOLD: return L"EXTRABOLD (800)";
-    case FW_HEAVY: return L"HEAVY (900)";
-    default: return L"(custom)";
-    }
-}
-
-inline std::wstring pitchFamilyToStr(BYTE pf) {
-    std::wstringstream ss;
-    BYTE pitch = pf & 0x03;
-    BYTE fam = pf & 0xF0;
-
-    switch (pitch) {
-    case DEFAULT_PITCH:  ss << L"DEFAULT_PITCH"; break;
-    case FIXED_PITCH:    ss << L"FIXED_PITCH"; break;
-    case VARIABLE_PITCH: ss << L"VARIABLE_PITCH"; break;
-    default:             ss << L"(pitch?" << int(pitch) << L")"; break;
-    }
-    ss << L", ";
-
-    switch (fam) {
-    case FF_DONTCARE:   ss << L"FF_DONTCARE"; break;
-    case FF_ROMAN:      ss << L"FF_ROMAN"; break;
-    case FF_SWISS:      ss << L"FF_SWISS"; break;
-    case FF_MODERN:     ss << L"FF_MODERN"; break;
-    case FF_SCRIPT:     ss << L"FF_SCRIPT"; break;
-    case FF_DECORATIVE: ss << L"FF_DECORATIVE"; break;
-    default:            ss << L"(family?" << int(fam) << L")"; break;
-    }
-    return ss.str();
-}
-
-inline double tenthsToDegrees(LONG v) {
-    // lfEscapement / lfOrientation are in tenths of degrees.
-    return static_cast<double>(v) / 10.0;
-}
-
-inline std::wstring explainHeight(LONG h) {
-    std::wstringstream ss;
-    ss << h << L" (";
-    if (h < 0)
-        ss << L"character height = " << -h << L" logical units";
-    else if (h > 0)
-        ss << L"cell height = " << h << L" logical units";
-    else
-        ss << L"height = 0 (use default)";
-    ss << L")";
-    return ss.str();
-}
-
 HFONT GdiProportionalizer::CreateFontAHook(int cHeight, int cWidth, int cEscapement, int cOrientation, int cWeight,
     DWORD bItalic, DWORD bUnderline, DWORD bStrikeOut, DWORD iCharSet, DWORD iOutPrecision, DWORD iClipPrecision,
     DWORD iQuality, DWORD iPitchAndFamily, LPCSTR pszFaceName)
@@ -391,36 +138,7 @@ HFONT GdiProportionalizer::CreateFontAHook(int cHeight, int cWidth, int cEscapem
 #if _DEBUG
     FILE* log = nullptr;
     if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
-        // Convert strings from wide pretty-printers to UTF-8 for fprintf
-        auto toUtf8 = [](const std::wstring& ws) {
-            if (ws.empty()) return std::string();
-            int size = WideCharToMultiByte(CP_UTF8, 0, ws.c_str(), -1, nullptr, 0, nullptr, nullptr);
-            std::string out(size, '\0');
-            WideCharToMultiByte(CP_UTF8, 0, ws.c_str(), -1, out.data(), size, nullptr, nullptr);
-            if (!out.empty() && out.back() == '\0') out.pop_back(); // strip null terminator
-            return out;
-            };
-        auto toUtf8C = [&](const wchar_t* ws) {
-            return toUtf8(std::wstring(ws));
-            };
-
-        fprintf(log, "GdiProportionalizer::CreateFontAHook() called with:\n");
-        fprintf(log, "  cHeight        = %s\n", toUtf8(explainHeight(cHeight)).c_str());
-        fprintf(log, "  cWidth         = %d\n", cWidth);
-        fprintf(log, "  cEscapement    = %d (%.1f°)\n", cEscapement, tenthsToDegrees(cEscapement));
-        fprintf(log, "  cOrientation   = %d (%.1f°)\n", cOrientation, tenthsToDegrees(cOrientation));
-        fprintf(log, "  cWeight        = %d (%s)\n", cWeight, toUtf8C(weightToName(cWeight)).c_str());
-        fprintf(log, "  bItalic        = %lu\n", bItalic);
-        fprintf(log, "  bUnderline     = %lu\n", bUnderline);
-        fprintf(log, "  bStrikeOut     = %lu\n", bStrikeOut);
-        fprintf(log, "  iCharSet       = %lu (%s)\n", iCharSet, toUtf8C(charsetToStr((BYTE)iCharSet)).c_str());
-        fprintf(log, "  iOutPrecision  = %lu (%s)\n", iOutPrecision, toUtf8C(outPrecToStr((BYTE)iOutPrecision)).c_str());
-        fprintf(log, "  iClipPrecision = %lu (%s)\n", iClipPrecision, toUtf8(clipPrecToStr((BYTE)iClipPrecision)).c_str());
-        fprintf(log, "  iQuality       = %lu (%s)\n", iQuality, toUtf8C(qualityToStr((BYTE)iQuality)).c_str());
-        fprintf(log, "  iPitchAndFamily= %lu (%s)\n", iPitchAndFamily, toUtf8(pitchFamilyToStr((BYTE)iPitchAndFamily)).c_str());
-        fprintf(log, "  pszFaceName    = %s\n", pszFaceName ? pszFaceName : "(null)");
-        fprintf(log, "------------------------------------------------------\n\n");
-
+        fprintf(log, "GdiProportionalizer::CreateFontWHook() \n");
         fclose(log);
     }
 #endif
@@ -534,8 +252,6 @@ HGDIOBJ GdiProportionalizer::SelectObjectHook(HDC hdc, HGDIOBJ obj)
 #endif
     state.penXF = 0.0;
     state.penXI = 0;
-    state.carry = 0.0;
-    state.ACarry = 0.0;
     state.prevCh = 0xFFFF;
 
     Font* pFont = FontManager.GetFont(static_cast<HFONT>(obj));
@@ -546,14 +262,6 @@ HGDIOBJ GdiProportionalizer::SelectObjectHook(HDC hdc, HGDIOBJ obj)
 
     DWORD count = GetKerningPairsW(hdc, 0, nullptr);
     if (count == 0) {
-#if _DEBUG
-        FILE* log = nullptr;
-        if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
-            fprintf(log, "A: 0 kerning pairs\n");
-            fclose(log);
-        }
-#endif
-        // No pairs or error; optionally check GetLastError()
         return ret;
     }
 
@@ -561,14 +269,6 @@ HGDIOBJ GdiProportionalizer::SelectObjectHook(HDC hdc, HGDIOBJ obj)
     std::vector<KERNINGPAIR> pairs(count);
     DWORD got = GetKerningPairsW(hdc, count, pairs.data());
     if (got == 0) {
-#if _DEBUG
-        FILE* log = nullptr;
-        if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
-            fprintf(log, "B: 0 kerning pairs\n");
-            fclose(log);
-        }
-#endif
-        // Failed; optionally check GetLastError()
         return ret;
     }
 
@@ -576,13 +276,15 @@ HGDIOBJ GdiProportionalizer::SelectObjectHook(HDC hdc, HGDIOBJ obj)
     kernAmounts.reserve(kernAmounts.size() + got);
     for (DWORD i = 0; i < got; ++i) {
         const KERNINGPAIR& kp = pairs[i];
-/*#if _DEBUG
+/* Commented out because this large amount of logging noticeably impacts game performance
+#if _DEBUG
         FILE* log = nullptr;
         if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
             fprintf(log, "Kerning pair: %d, %d, %d\n", kp.wFirst, kp.wSecond, kp.iKernAmount);
             fclose(log);
         }
-#endif*/
+#endif
+*/
         uint32_t key = static_cast<uint32_t>(kp.wFirst)
             | (static_cast<uint32_t>(kp.wSecond) << 16);
         kernAmounts[key] = static_cast<int>(kp.iKernAmount);
@@ -711,82 +413,6 @@ std::string GlyphMetricsToString(const GLYPHMETRICS* gm)
     return oss.str();
 }
 
-// Shift a GGO_GRAY2_BITMAP buffer horizontally by dx columns.
-// Positive dx => shift ink to the RIGHT (adds blank columns on the left).
-// Negative dx => shift ink to the LEFT  (adds blank columns on the right).
-//
-// - lpv: pointer to the glyph bitmap buffer returned by GetGlyphOutline* (GRAY2).
-// - gm:  GLYPHMETRICS for this glyph (used for width/height/stride). We do NOT modify it.
-// - dx:  integer shift (will be clamped to [-gm->gmBlackBoxX, gm->gmBlackBoxX]).
-//
-// Notes:
-// - Works in-place; uses a small temporary row buffer on the stack.
-// - Assumes format == GGO_GRAY2_BITMAP (2 bits per pixel, leftmost pixel is in the high-order bits).
-// - Keeps gm->gmBlackBoxX unchanged (we shift ink within the existing box).
-// - If you also adjust gm->gmptGlyphOrigin.x outside this function, you can "nudge" placement
-//   without changing the visible width.
-static void ShiftGrayBitmapHoriz(void* lpv, const GLYPHMETRICS* gm, int dx)
-{
-    if (!lpv || !gm) return;
-
-    const int w = (int)gm->gmBlackBoxX;
-    const int h = (int)gm->gmBlackBoxY;
-    if (w <= 0 || h <= 0 || dx == 0) return;
-
-    // Clamp dx to avoid reading outside the row.
-    if (dx > w) dx = w;
-    if (dx < -w) dx = -w;
-
-    // 2-bpp, DWORD-aligned stride per GDI docs.
-    // bitsPerRow = 2 * w; strideBytes = alignUp(bitsPerRow, 32)/8
-    const int bitsPerRow = 2 * w;
-    const int strideBytes = ((bitsPerRow + 31) & ~31) >> 3;
-
-    // Temporary row buffers (unpacked/packed).
-    // We keep 1 byte per pixel for simplicity; w for src and w for dst is enough.
-    // If your max glyph width can be very large, consider heap allocation.
-    std::vector<uint8_t> row(w);
-    std::vector<uint8_t> shifted(w);
-
-    uint8_t* base = static_cast<uint8_t*>(lpv);
-
-    for (int y = 0; y < h; ++y) {
-        uint8_t* rowBytes = base + y * strideBytes;
-
-        // Unpack 2-bpp to 1-byte-per-pixel (values 0..3).
-        // GDI packs leftmost pixel in the high-order bits of the first byte.
-        for (int i = 0; i < w; ++i) {
-            const int byteIndex = i >> 2;                 // 4 pixels per byte
-            const int shift = 6 - ((i & 3) * 2);      // 6,4,2,0
-            row[i] = (rowBytes[byteIndex] >> shift) & 0x3;
-        }
-
-        // Shift: destination pixel i comes from source (i - dx).
-        // Anything falling outside [0, w-1] becomes 0 (blank).
-        if (dx != 0) {
-            for (int i = 0; i < w; ++i) {
-                const int src = i - dx;
-                shifted[i] = (src >= 0 && src < w) ? row[src] : 0;
-            }
-        }
-        else {
-            // (Never hit, as dx==0 is early-returned; here for completeness.)
-            std::copy(row.begin(), row.end(), shifted.begin());
-        }
-
-        // Clear the whole stride so unused bits don’t carry garbage.
-        std::memset(rowBytes, 0, (size_t)strideBytes);
-
-        // Repack from 0..3 to 2-bpp, high bits first.
-        for (int i = 0; i < w; ++i) {
-            const int byteIndex = i >> 2;
-            const int shift = 6 - ((i & 3) * 2);
-            rowBytes[byteIndex] |= (uint8_t)((shifted[i] & 0x3) << shift);
-        }
-        // Any padding bytes at end of the stride remain 0.
-    }
-}
-
 
 DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuFormat, LPGLYPHMETRICS lpgm, DWORD cjBuffer, LPVOID pvBuffer, MAT2* lpmat2)
 {
@@ -802,68 +428,44 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
 
     DWORD ret = GetGlyphOutlineW(hdc, ch, fuFormat, lpgm, cjBuffer, pvBuffer, lpmat2);
 
-    //    if (lpgm->gmCellIncX > 3)
-    //      lpgm->gmCellIncX -= 3;
-
-    if (wstr[0] == 'm') {
-        //        lpgm->gmBlackBoxX += 5;
-        //        lpgm->gmptGlyphOrigin.x -= 2;
-    }
-
     ABCFLOAT abc;
     GetCharABCWidthsFloatW(hdc, ch, ch, &abc);
+
+    // TODO: make '|' behave like a space for kerning purposes too
 
     uint32_t kernKey = static_cast<uint32_t>(state.prevCh) | (static_cast<uint32_t>(ch) << 16);
     double kern = kernAmounts[kernKey];
 
-//    double kern = 0.0;
-
-    // 2) Integer-approx the floating advance
     double advanceF = abc.abcfA + abc.abcfB + abc.abcfC + kern;
-    double withCarry = advanceF + state.carry;
-    int    advOut = (int)floor(withCarry + 0.5);
-    state.carry = withCarry - advOut;
-
-    // 3)  A nudge
-    int nudge = 0;
-    double aWithCarry = abc.abcfA - floor(abc.abcfA) + state.ACarry;
-    nudge = (int)floor(aWithCarry + 0.5);                   // −1, 0, +1 in practice
-    if (pvBuffer != NULL) {
-        state.ACarry = aWithCarry - nudge;
-    }
+    int    advOut = (int)floor(advanceF + 0.5);
 
 #if _DEBUG
     FILE* log = nullptr;
     if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
-        fprintf(log, "GdiProportionalizer::GetGlyphOutlineAHook() fuFormat: %s, char: %s, 0x%x, pvBuffer: %d, cjBuffer: %d, metricsResult: %s, nudge: %d, advOut: %d, carry: %f, ACarry: %f, a: %f, b: %f, c: %f, kern: %f\n", FuFormatToString(fuFormat).c_str(), reinterpret_cast<const char*>(wstr.c_str()), wstr[0], pvBuffer != NULL, cjBuffer, GlyphMetricsToString(lpgm).c_str(), nudge, advOut, state.carry, state.ACarry, abc.abcfA, abc.abcfB, abc.abcfC, kern);
+        fprintf(log, "GdiProportionalizer::GetGlyphOutlineAHook() fuFormat: %s, char: %s, 0x%x, pvBuffer: %d, cjBuffer: %d, metricsResult: %s, advOut: %d, a: %f, b: %f, c: %f, kern: %f\n", FuFormatToString(fuFormat).c_str(), reinterpret_cast<const char*>(wstr.c_str()), wstr[0], pvBuffer != NULL, cjBuffer, GlyphMetricsToString(lpgm).c_str(), advOut, abc.abcfA, abc.abcfB, abc.abcfC, kern);
         fclose(log);
     }
 #endif
 
-    // Shift bitmap horizontally by `nudge` cols (add/remove blank cols)
-    ShiftGrayBitmapHoriz(pvBuffer, lpgm, nudge);               // updates lpv + gmSys.gmBlackBoxX
-
-    // Move origin so caller draws it where we intend
-    lpgm->gmptGlyphOrigin.x += nudge;
-
+    // Special workaround to make '|' behave as if it were a space. (We can't use space characters because SoftPal ignores gmCellIncX for them.)
+    // This workaround is designed to works alongside space -> | replacement in SoftpalScript.WritePatched().
     if (wstr[0] == '|') {
         advOut -= 3;
         if (pvBuffer && cjBuffer >= ret) {
             memset(pvBuffer, 0, ret);
         }
     }
+/* // Pre-kerning-support workaround
     else if (wstr[0] == 'F' || wstr[0] == 'e') {
         advOut -= 1;
     }
+    */
     else {
         advOut -= 1;
     }
 
-    // 4) Publish adjusted metrics to the caller
-//    *lpgm = gmSys;
     lpgm->gmCellIncX = advOut;
 
-    // 5) Advance your internal pens for next call
     if (pvBuffer != NULL) {
         state.penXF += advanceF;
         state.penXI += advOut;
