@@ -6,25 +6,12 @@
 
 using namespace std;
 
-
 /*
 SoftPal uses GDI methods only to create the font and to compute the metrics and bitmap of one character at a time.
 Then on its end (and beyond our control here), it adds a black outline around the bitmap and prints it onscreen itself.
 It uses the GDI-returned gmCellIncX to advance its internal "pen position".
 Since GDI never sees more than one letter per function call, its native kerning support doesn't do anything.
-So we partially implement kerning by keeping track of the previous character SoftPal requested
-and specially adjusting gmCellIncX of the next character.
-*/
 
-struct GlyphState {
-    double penXF;         // floating pen x
-    int    penXI;         // integer pen x as seen by the app (what gmCellIncX drives)
-    WCHAR  prevCh;        // previous character for kerning
-} state;
-
-std::unordered_map<uint32_t, int> kernAmounts;
-
-/*
 Example call sequence from SoftPal:
 
 GdiProportionalizer::CreateFontAHook()
@@ -259,47 +246,11 @@ HGDIOBJ GdiProportionalizer::SelectObjectHook(HDC hdc, HGDIOBJ obj)
         fclose(log);
     }
 #endif
-    state.penXF = 0.0;
-    state.penXI = 0;
-    state.prevCh = 0xFFFF;
-
     Font* pFont = FontManager.GetFont(static_cast<HFONT>(obj));
     if (pFont != nullptr)
         CurrentFonts[hdc] = pFont;
 
-    HGDIOBJ ret = SelectObject(hdc, obj);
-
-    DWORD count = GetKerningPairsW(hdc, 0, nullptr);
-    if (count == 0) {
-        return ret;
-    }
-
-    // Allocate and fetch the pairs
-    std::vector<KERNINGPAIR> pairs(count);
-    DWORD got = GetKerningPairsW(hdc, count, pairs.data());
-    if (got == 0) {
-        return ret;
-    }
-
-    // Store as key = wFirst | (wSecond << 16), value = iKernAmount
-    kernAmounts.reserve(kernAmounts.size() + got);
-    for (DWORD i = 0; i < got; ++i) {
-        const KERNINGPAIR& kp = pairs[i];
-/* Commented out because this large amount of logging noticeably impacts game performance
-#if _DEBUG
-        FILE* log = nullptr;
-        if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
-            fprintf(log, "Kerning pair: %d, %d, %d\n", kp.wFirst, kp.wSecond, kp.iKernAmount);
-            fclose(log);
-        }
-#endif
-*/
-        uint32_t key = static_cast<uint32_t>(kp.wFirst)
-            | (static_cast<uint32_t>(kp.wSecond) << 16);
-        kernAmounts[key] = static_cast<int>(kp.iKernAmount);
-    }
-
-    return ret;
+    return SelectObject(hdc, obj);
 }
 
 BOOL GdiProportionalizer::DeleteObjectHook(HGDIOBJ obj)
@@ -457,19 +408,18 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
         }
     }
 
+    // TODO: Populate this value
+    int kern = 0;
+
     ABCFLOAT abc;
     GetCharABCWidthsFloatW(hdc, ch, ch, &abc);
-
-    uint32_t kernKey = static_cast<uint32_t>(state.prevCh) | (static_cast<uint32_t>(ch) << 16);
-    double kern = kernAmounts[kernKey];
-
     double advanceF = abc.abcfA + abc.abcfB + abc.abcfC + kern;
-    int    advOut = (int)floor(advanceF + 0.5);
+    int advOut = (int)floor(advanceF + 0.5);
 
 #if _DEBUG
     FILE* log = nullptr;
     if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
-        fprintf(log, "GdiProportionalizer::GetGlyphOutlineAHook() fuFormat: %s, char: %s, 0x%x, pvBuffer: %d, cjBuffer: %d, metricsResult: %s, advOut: %d, a: %f, b: %f, c: %f, kern: %f\n", FuFormatToString(fuFormat).c_str(), reinterpret_cast<const char*>(wstr.c_str()), wstr[0], pvBuffer != NULL, cjBuffer, GlyphMetricsToString(lpgm).c_str(), advOut, abc.abcfA, abc.abcfB, abc.abcfC, kern);
+        fprintf(log, "GdiProportionalizer::GetGlyphOutlineAHook() fuFormat: %s, char: %s, 0x%x, pvBuffer: %d, cjBuffer: %d, metricsResult: %s, advOut: %d, a: %f, b: %f, c: %f, kern: %d\n", FuFormatToString(fuFormat).c_str(), reinterpret_cast<const char*>(wstr.c_str()), wstr[0], pvBuffer != NULL, cjBuffer, GlyphMetricsToString(lpgm).c_str(), advOut, abc.abcfA, abc.abcfB, abc.abcfC, kern);
         fclose(log);
     }
 #endif
@@ -482,12 +432,6 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
     }
 
     lpgm->gmCellIncX = advOut;
-
-    if (pvBuffer != NULL) {
-        state.penXF += advanceF;
-        state.penXI += advOut;
-        state.prevCh = ch;
-    }
 
     return ret;
 }
