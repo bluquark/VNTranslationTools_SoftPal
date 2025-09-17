@@ -6,17 +6,26 @@
 
 using namespace std;
 
+
+/*
+SoftPal uses GDI methods only to create the font and to compute the metrics and bitmap of one character at a time.
+Then on its end (and beyond our control here), it adds a black outline around the bitmap and prints it onscreen itself.
+It uses the GDI-returned gmCellIncX to advance its internal "pen position".
+Since GDI never sees more than one letter per function call, its native kerning support doesn't do anything.
+So we partially implement kerning by keeping track of the previous character SoftPal requested
+and specially adjusting gmCellIncX of the next character.
+*/
+
 struct GlyphState {
     double penXF;         // floating pen x
     int    penXI;         // integer pen x as seen by the app (what gmCellIncX drives)
-    WCHAR  prevCh;        // previous character for kerning (optional)
-    // caches: ABCFLOAT for glyphs, kerning table, text metrics…
+    WCHAR  prevCh;        // previous character for kerning
 } state;
 
 std::unordered_map<uint32_t, int> kernAmounts;
 
 /*
-Example call sequence:
+Example call sequence from SoftPal:
 
 GdiProportionalizer::CreateFontAHook()
 GdiProportionalizer::CreateFontWHook()
@@ -38,7 +47,7 @@ GdiProportionalizer::GetGlyphOutlineAHook() char: ?, 0x3f
 GdiProportionalizer::GetGlyphOutlineAHook() char: ?, 0x3f
 GdiProportionalizer::GetGlyphOutlineAHook() char: ?, 0x3f
 GdiProportionalizer::SelectObjectHook()
-GdiProportionalizer::DeleteObjectHook(
+GdiProportionalizer::DeleteObjectHook()
 */
 
 void GdiProportionalizer::Init()
@@ -413,6 +422,14 @@ std::string GlyphMetricsToString(const GLYPHMETRICS* gm)
     return oss.str();
 }
 
+#if 0
+UINT MapPipeToSpace(UINT ch) {
+    if (ch == '|') {
+        return ' ';
+    }
+    return ch;
+}
+#endif
 
 DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuFormat, LPGLYPHMETRICS lpgm, DWORD cjBuffer, LPVOID pvBuffer, MAT2* lpmat2)
 {
@@ -428,10 +445,20 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
 
     DWORD ret = GetGlyphOutlineW(hdc, ch, fuFormat, lpgm, cjBuffer, pvBuffer, lpmat2);
 
+    // Special workaround to make '|' behave as if it were a space.
+    // This code is intended to work alongside the ' ' -> '|' replacement in SoftpalScript.WritePatched().
+    // (We can't use space characters because SoftPal hardcodes an advance distance and ignores the value of gmCellIncX for them.)
+    if (ch == '|') {
+        ch = ' ';
+
+        // Wipe all pixels from the bitmap GetGlyphOutlineW created
+        if (pvBuffer && cjBuffer >= ret) {
+            memset(pvBuffer, 0, ret);
+        }
+    }
+
     ABCFLOAT abc;
     GetCharABCWidthsFloatW(hdc, ch, ch, &abc);
-
-    // TODO: make '|' behave like a space for kerning purposes too
 
     uint32_t kernKey = static_cast<uint32_t>(state.prevCh) | (static_cast<uint32_t>(ch) << 16);
     double kern = kernAmounts[kernKey];
@@ -446,21 +473,11 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
         fclose(log);
     }
 #endif
-
-    // Special workaround to make '|' behave as if it were a space. (We can't use space characters because SoftPal ignores gmCellIncX for them.)
-    // This workaround is designed to works alongside space -> | replacement in SoftpalScript.WritePatched().
-    if (wstr[0] == '|') {
-        advOut -= 3;
-        if (pvBuffer && cjBuffer >= ret) {
-            memset(pvBuffer, 0, ret);
-        }
-    }
-/* // Pre-kerning-support workaround
-    else if (wstr[0] == 'F' || wstr[0] == 'e') {
-        advOut -= 1;
-    }
-    */
-    else {
+    
+    // SoftPal systematically adds 1 extra pixel of spacing after every character, beyond what the font specifies.
+    // This is not very noticeable with Japanese characters, but it's extremely noticeable with a proportional Latin font.
+    // Cancel out that behavior here.
+    if (advOut > 0) {
         advOut -= 1;
     }
 
