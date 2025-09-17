@@ -202,7 +202,9 @@ namespace VNTextPatch.Shared.Scripts.Softpal
         {
             try
             {
-//                if (_stack.Count < 3)
+// Softpal games can very occasionally have messages with a stackcount of exactly 3. This seems to be related to the use of other opcodes like screen-shake,
+// although I don't fully understand why.
+             // if (_stack.Count < 3)
                 if (_stack.Count < 4)
                     return;
 
@@ -263,6 +265,8 @@ namespace VNTextPatch.Shared.Scripts.Softpal
                         case 0x20011:
                         case 0x20012:
                         case 0x20013:
+// This extra opcode is for message-log-only merged lines for split messageboxes in SoftPal. Messageboxes can be split when the first half of the line
+// appears more slowly than the second half. In these cases, TEXT.DAT additionally contains a separate line (right before) that provides the entire merged line.
 //                        case 0x20014:
                             return true;
 
