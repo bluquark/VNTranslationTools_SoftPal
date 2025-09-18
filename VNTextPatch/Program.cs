@@ -109,8 +109,12 @@ namespace VNTextPatch
 
             ScriptLocation textLocation = GetLocalTextScriptLocation(inputLocation, textPath);
 
+            // With Softpal, a better default is the root directory of the game, not the output directory
             if (sjisExtPath == null)
-                sjisExtPath = Path.Combine(inputLocation.ScriptName != null ? Path.GetDirectoryName(outputPath) : outputPath, "sjis_ext.bin");
+            {
+                sjisExtPath = "sjis_ext.bin";
+                //                sjisExtPath = Path.Combine(inputLocation.ScriptName != null ? Path.GetDirectoryName(outputPath) : outputPath, "sjis_ext.bin");
+            }
 
             if (File.Exists(sjisExtPath))
                 StringUtil.SjisTunnelEncoding.SetMappingTable(File.ReadAllBytes(sjisExtPath));
@@ -165,8 +169,12 @@ namespace VNTextPatch
 
             GoogleDocsScriptCollection textCollection = new GoogleDocsScriptCollection(spreadsheetId);
 
+            // With Softpal, a better default is the root directory of the game, not the output directory
             if (sjisExtPath == null)
-                sjisExtPath = Path.Combine(inputLocation.ScriptName != null ? Path.GetDirectoryName(outputPath) : outputPath, "sjis_ext.bin");
+            {
+                sjisExtPath = "sjis_ext.bin";
+                //                sjisExtPath = Path.Combine(inputLocation.ScriptName != null ? Path.GetDirectoryName(outputPath) : outputPath, "sjis_ext.bin");
+            }
 
             if (File.Exists(sjisExtPath))
                 StringUtil.SjisTunnelEncoding.SetMappingTable(File.ReadAllBytes(sjisExtPath));
