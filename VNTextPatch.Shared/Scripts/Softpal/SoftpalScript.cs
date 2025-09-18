@@ -83,6 +83,7 @@ namespace VNTextPatch.Shared.Scripts.Softpal
 
                 string text = stringEnumerator.Current.Text;
                 text = text.Replace("--", "―"); // em dash replacement (needs at least one real em dash in the script for sjis mapping)
+                text = text.Replace("—", "―");  // Replace unicode horizontal bar 0x8213 with em-dash 0x8212
                 text = ProportionalWordWrapper.Default.Wrap(text);
                 text = text.Replace("\r\n", "<br>");
                 text = text.Replace(" ", "|");  // space replacement with pipe character (needs special handling in the font DLL)

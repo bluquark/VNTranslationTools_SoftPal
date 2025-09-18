@@ -120,5 +120,6 @@ wstring Proportionalizer::FindCustomFontFile()
         }
     }
 
-    return L"";
+    return L"C:\\Windows\\Fonts\\Arial.ttf";
+//    return L"";
 }
