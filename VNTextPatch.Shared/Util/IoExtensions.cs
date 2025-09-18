@@ -4,9 +4,11 @@ using System.Text;
 
 namespace VNTextPatch.Shared.Util
 {
-    internal static class IoExtensions
+    public static class IoExtensions
     {
-        private static readonly byte[] TextBuffer = new byte[1024];
+        private static readonly byte[] TextBuffer = new byte[10000];
+
+        public static int SoftpalMessageMinStackCount = 3;
 
         public static void Skip(this BinaryReader reader, int length)
         {

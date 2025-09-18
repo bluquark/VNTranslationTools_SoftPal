@@ -202,10 +202,14 @@ namespace VNTextPatch.Shared.Scripts.Softpal
         {
             try
             {
-// Softpal games can very occasionally have messages with a stackcount of exactly 3. This seems to be related to the use of other opcodes like screen-shake,
-// although I don't fully understand why.
-             // if (_stack.Count < 3)
-                if (_stack.Count < 4)
+                // The stock version of VNTranslationTools had the minimum stack count at 4,
+                // but I've observed some valid messages with a stack count of 3.
+                //
+                // So in this fork, this defaults to 3, but can be set back to 4 with --minStackCount=4
+                //
+                // Note that extraction and insertion must both use the same value here, as
+                // it affects the total number of lines in the script.
+                if (_stack.Count < IoExtensions.SoftpalMessageMinStackCount)
                     return;
 
                 Operand number = _stack.Pop();
