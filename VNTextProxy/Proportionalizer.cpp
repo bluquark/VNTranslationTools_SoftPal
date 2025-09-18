@@ -120,6 +120,7 @@ wstring Proportionalizer::FindCustomFontFile()
         }
     }
 
-    return L"C:\\Windows\\Fonts\\Arial.ttf";
-//    return L"";
+    wchar_t winDir[MAX_PATH];
+    (void) GetWindowsDirectoryW(winDir, MAX_PATH);
+    return std::wstring(winDir) + L"\\Fonts\\Arial.ttf";
 }
