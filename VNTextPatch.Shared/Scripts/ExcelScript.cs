@@ -69,7 +69,7 @@ namespace VNTextPatch.Shared.Scripts
             string translatedText = StringUtil.NullIfEmpty(row.GetCell((int)ExcelColumn.TranslatedLine)?.StringCellValue);
             if (translatedText != null)
                 Translated++;
-
+/*
             string checkedText = StringUtil.NullIfEmpty(row.GetCell((int)ExcelColumn.CheckedLine)?.StringCellValue);
             if (checkedText != null)
                 Checked++;
@@ -77,9 +77,9 @@ namespace VNTextPatch.Shared.Scripts
             string editedText = StringUtil.NullIfEmpty(row.GetCell((int)ExcelColumn.EditedLine)?.StringCellValue);
             if (editedText != null)
                 Edited++;
-
-            string text = StringUtil.NullIf(editedText, ".") ??
-                          StringUtil.NullIf(checkedText, ".") ??
+*/
+            string text = /* StringUtil.NullIf(editedText, ".") ??
+                          StringUtil.NullIf(checkedText, ".") ?? */
                           translatedText ??
                           originalText;
             return text != EmptyTextMarker ? text : string.Empty;
