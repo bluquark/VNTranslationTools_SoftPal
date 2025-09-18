@@ -121,9 +121,10 @@ namespace VNTextPatch.Shared.Scripts.Softpal
         private static StreamWriter GetDisassemblyWriter(string codeFilePath)
         {
             return null;
-
+            /*
             Stream stream = File.Open(Path.ChangeExtension(codeFilePath, ".txt"), FileMode.Create, FileAccess.Write);
             return new StreamWriter(stream);
+            */
         }
 
         private readonly struct TextOperand
