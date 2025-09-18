@@ -298,6 +298,9 @@ namespace VNTextPatch
                         case "format":
                             options.Format = value;
                             break;
+                        case "minStackCount":
+                            IoExtensions.SoftpalMessageMinStackCount = int.Parse(value);
+                            break;
                     }
                 }
 
