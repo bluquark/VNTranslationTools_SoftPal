@@ -4,7 +4,7 @@
 
 #include "pch.h"
 
-#define GDI_LOGGING 1
+#define GDI_LOGGING 0
 
 using namespace std;
 
