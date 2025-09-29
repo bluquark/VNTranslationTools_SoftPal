@@ -4,6 +4,8 @@
     {
         CharacterName,
         Message,
+        LogCharacterName,
+        LogMessage,
         Internal
     }
 

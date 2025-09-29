@@ -52,7 +52,11 @@ namespace VNTextPatch.Shared.Scripts.Softpal
 
                 if (IsMessageInstruction(instr))
                 {
-                    HandleMessageInstruction();
+                    HandleMessageInstruction(false);
+                }
+                else if (IsMergedLogInstruction(instr))
+                {
+                    HandleMessageInstruction(true);
                 }
                 else if (_opcodeHandlers.TryGetValue(instr.Opcode, out Action<Instruction> handler))
                 {
@@ -198,7 +202,7 @@ namespace VNTextPatch.Shared.Scripts.Softpal
             }
         }
 
-        private void HandleMessageInstruction()
+        private void HandleMessageInstruction(bool logOnly)
         {
             try
             {
@@ -219,10 +223,10 @@ namespace VNTextPatch.Shared.Scripts.Softpal
                     return;
 
                 if (name.Value >= 0)
-                    TextAddressEncountered?.Invoke(name.Offset, ScriptStringType.CharacterName);
+                    TextAddressEncountered?.Invoke(name.Offset, logOnly ? ScriptStringType.LogCharacterName : ScriptStringType.CharacterName);
 
                 if (message.Value >= 0)
-                    TextAddressEncountered?.Invoke(message.Offset, ScriptStringType.Message);
+                    TextAddressEncountered?.Invoke(message.Offset, logOnly ? ScriptStringType.LogMessage : ScriptStringType.Message);
             }
             finally
             {
@@ -248,6 +252,13 @@ namespace VNTextPatch.Shared.Scripts.Softpal
             }
         }
 
+        private static bool IsMergedLogInstruction(Instruction instr)
+        {
+            // This extra opcode is for message-log-only merged lines for split messageboxes in SoftPal. Messageboxes can be split when the first half of the line
+            // appears more slowly than the second half. In these cases, TEXT.DAT additionally contains a separate line (right before) that provides the entire merged line.
+            return instr.Opcode == SoftpalOpcodes.Syscall && instr.Operands[0].RawValue == 0x20014;
+        }
+
         private static bool IsMessageInstruction(Instruction instr)
         {
             switch (instr.Opcode)
@@ -269,8 +280,6 @@ namespace VNTextPatch.Shared.Scripts.Softpal
                         case 0x20011:
                         case 0x20012:
                         case 0x20013:
-// This extra opcode is for message-log-only merged lines for split messageboxes in SoftPal. Messageboxes can be split when the first half of the line
-// appears more slowly than the second half. In these cases, TEXT.DAT additionally contains a separate line (right before) that provides the entire merged line.
 //                        case 0x20014:
                             return true;
 

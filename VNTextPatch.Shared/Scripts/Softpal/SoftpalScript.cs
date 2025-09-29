@@ -73,6 +73,19 @@ namespace VNTextPatch.Shared.Scripts.Softpal
             {
                 iteration++;
 
+                if (operand.Type == ScriptStringType.LogCharacterName || operand.Type == ScriptStringType.LogMessage)
+                {
+                    string text2 = "test";
+                    int newAddr2 = (int)textStream.Length;
+                    textWriter.Write(0);
+                    textWriter.WriteZeroTerminatedSjisString(text2);
+
+                    codeStream.Position = operand.Offset;
+                    codeWriter.Write(newAddr2);
+
+                    continue;
+                }
+
                 if (!stringEnumerator.MoveNext())
                     throw new InvalidDataException("Not enough lines in translation");
 
@@ -82,7 +95,8 @@ namespace VNTextPatch.Shared.Scripts.Softpal
     $"(operand offset 0x{operand.Offset:X}): expected {operand.Type}, got {stringEnumerator.Current.Type}, text={stringEnumerator.Current.Text}");
 
                 string text = stringEnumerator.Current.Text;
-                text = text.Replace("--", "―"); // em dash replacement (needs at least one real em dash in the script for sjis mapping)
+//                text = StringUtil.FancifyQuotes(text);
+                text = text.Replace("--", "―"); // em dash replacement
                 text = text.Replace("—", "―");  // Replace unicode horizontal bar 0x8213 with em-dash 0x8212
                 text = ProportionalWordWrapper.Default.Wrap(text);
                 text = text.Replace("\r\n", "<br>");
