@@ -106,6 +106,7 @@ namespace VNTextPatch.Shared.Scripts.Softpal
 
                 if (operand.Type == ScriptStringType.LogCharacterName)
                 {
+                    // Some anomalies happen after this offset, debug later
                     if (iteration >= 47744)
                     {
                         WriteAndPatch("TODO", operand.Offset);
@@ -123,16 +124,18 @@ namespace VNTextPatch.Shared.Scripts.Softpal
 
                     string logString = message1 + message2;
 
-                    Console.WriteLine("Merged split line at " + iteration + ": " + logString);
+//                    Console.WriteLine("Merged split line at " + iteration + ": " + logString);
 
                     logString = SoftpalizeText(logString);
+                    message1 = SoftpalizeText(message1);
+                    message2 = logString.Substring(message1.Length);
 
                     WriteAndPatch(name1, operand.Offset);
                     stringStack.Add(logString);
                     stringStack.Add(name1);
-                    stringStack.Add(SoftpalizeText(message1));
-                    stringStack.Add(name1);
-                    stringStack.Add(SoftpalizeText(message2));
+                    stringStack.Add(message1);
+                    stringStack.Add(name2);
+                    stringStack.Add(message2);
 
                     continue;
                 }
