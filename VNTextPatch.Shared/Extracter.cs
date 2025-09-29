@@ -40,6 +40,9 @@ namespace VNTextPatch.Shared
                 throw new FileNotFoundException($"{inputScriptName} does not exist in {_inputCollection.Name}");
 
             _inputScript.Load(new ScriptLocation(_inputCollection, inputScriptName));
+
+            Console.WriteLine("ExtractOne: " + inputScriptName + ", " + textScriptName);
+
             List<ScriptString> strings = _inputScript.GetStrings().ToList();
             if (strings.Count == 0)
                 return;
