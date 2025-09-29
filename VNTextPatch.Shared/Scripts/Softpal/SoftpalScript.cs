@@ -47,6 +47,12 @@ namespace VNTextPatch.Shared.Scripts.Softpal
 
             foreach (TextOperand operand in _textOperands)
             {
+                if (operand.Type == ScriptStringType.LogCharacterName || operand.Type == ScriptStringType.LogMessage)
+                {
+                    // No need to extract these, because the split lines that follow always contain the same text
+                    continue;
+                }
+
                 int addr = BitConverter.ToInt32(_code, operand.Offset);
                 textStream.Position = addr + 4;
                 string text = textReader.ReadZeroTerminatedSjisString();
