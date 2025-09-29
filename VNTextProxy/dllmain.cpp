@@ -47,7 +47,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
     case DLL_PROCESS_ATTACH:
         Proxy::Init(hModule);
 
-#if _DEBUG
+#if GDI_LOGGING
         Initialize();
 #else
         OriginalEntryPoint = DetourGetEntryPoint(nullptr);
