@@ -41,8 +41,6 @@ namespace VNTextPatch.Shared
 
             _inputScript.Load(new ScriptLocation(_inputCollection, inputScriptName));
 
-            Console.WriteLine("ExtractOne: " + inputScriptName + ", " + textScriptName);
-
             List<ScriptString> strings = _inputScript.GetStrings().ToList();
             if (strings.Count == 0)
                 return;
