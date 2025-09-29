@@ -55,6 +55,18 @@ namespace VNTextPatch.Shared.Scripts.Softpal
             }
         }
 
+        private string SoftpalizeText(string text)
+        {
+            //                text = StringUtil.FancifyQuotes(text);
+            text = text.Replace("--", "―"); // em dash replacement
+            text = text.Replace("—", "―");  // Replace unicode horizontal bar 0x8213 with em-dash 0x8212
+            text = ProportionalWordWrapper.Default.Wrap(text);
+            text = text.Replace("\r\n", "<br>");
+            text = text.Replace(" ", "|");  // space replacement with pipe character (needs special handling in the font DLL)
+
+            return text;
+        }
+
         public void WritePatched(IEnumerable<ScriptString> strings, ScriptLocation location)
         {
             string codeFilePath = location.ToFilePath();
@@ -67,24 +79,71 @@ namespace VNTextPatch.Shared.Scripts.Softpal
             BinaryWriter textWriter = new BinaryWriter(textStream);
             textWriter.Write(_text);
 
+            void WriteAndPatch(string s, int patchOffset)
+            {
+                int newAddr = (int)textStream.Length;
+                textWriter.Write(0);
+                textWriter.WriteZeroTerminatedSjisString(s);
+
+                codeStream.Position = patchOffset;
+                codeWriter.Write(newAddr);
+            }
+
             int iteration = 0;
+            List<string> stringStack = new List<string>();
             using IEnumerator<ScriptString> stringEnumerator = strings.GetEnumerator();
             foreach (TextOperand operand in _textOperands)
             {
                 iteration++;
 
-                if (operand.Type == ScriptStringType.LogCharacterName || operand.Type == ScriptStringType.LogMessage)
+                if (stringStack.Count > 0)
                 {
-                    string text2 = "test";
-                    int newAddr2 = (int)textStream.Length;
-                    textWriter.Write(0);
-                    textWriter.WriteZeroTerminatedSjisString(text2);
+                    string str = stringStack[0];
+                    WriteAndPatch(str, operand.Offset);
+                    stringStack.RemoveAt(0);
+                    continue;
+                }
 
-                    codeStream.Position = operand.Offset;
-                    codeWriter.Write(newAddr2);
+                if (operand.Type == ScriptStringType.LogCharacterName)
+                {
+                    if (iteration >= 47744)
+                    {
+                        WriteAndPatch("TODO", operand.Offset);
+                        continue;
+                    }
+
+                    stringEnumerator.MoveNext();
+                    string name1 = SoftpalizeText(stringEnumerator.Current.Text);
+                    stringEnumerator.MoveNext();
+                    string message1 = stringEnumerator.Current.Text;
+                    stringEnumerator.MoveNext();
+                    string name2 = SoftpalizeText(stringEnumerator.Current.Text);
+                    stringEnumerator.MoveNext();
+                    string message2 = stringEnumerator.Current.Text;
+
+                    string logString = message1 + message2;
+
+                    Console.WriteLine("Merged split line at " + iteration + ": " + logString);
+
+                    logString = SoftpalizeText(logString);
+
+                    WriteAndPatch(name1, operand.Offset);
+                    stringStack.Add(logString);
+                    stringStack.Add(name1);
+                    stringStack.Add(SoftpalizeText(message1));
+                    stringStack.Add(name1);
+                    stringStack.Add(SoftpalizeText(message2));
 
                     continue;
                 }
+
+                if (operand.Type == ScriptStringType.LogMessage)
+                {
+                    WriteAndPatch("TODO", operand.Offset);
+
+                    continue;
+                }
+
 
                 if (!stringEnumerator.MoveNext())
                     throw new InvalidDataException("Not enough lines in translation");
@@ -95,19 +154,9 @@ namespace VNTextPatch.Shared.Scripts.Softpal
     $"(operand offset 0x{operand.Offset:X}): expected {operand.Type}, got {stringEnumerator.Current.Type}, text={stringEnumerator.Current.Text}");
 
                 string text = stringEnumerator.Current.Text;
-//                text = StringUtil.FancifyQuotes(text);
-                text = text.Replace("--", "―"); // em dash replacement
-                text = text.Replace("—", "―");  // Replace unicode horizontal bar 0x8213 with em-dash 0x8212
-                text = ProportionalWordWrapper.Default.Wrap(text);
-                text = text.Replace("\r\n", "<br>");
-                text = text.Replace(" ", "|");  // space replacement with pipe character (needs special handling in the font DLL)
+                text = SoftpalizeText(text);
 
-                int newAddr = (int)textStream.Length;
-                textWriter.Write(0);
-                textWriter.WriteZeroTerminatedSjisString(text);
-
-                codeStream.Position = operand.Offset;
-                codeWriter.Write(newAddr);
+                WriteAndPatch(text, operand.Offset);
             }
 
             if (stringEnumerator.MoveNext())
