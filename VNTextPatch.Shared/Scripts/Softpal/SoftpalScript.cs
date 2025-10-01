@@ -78,8 +78,12 @@ namespace VNTextPatch.Shared.Scripts.Softpal
             text = text.Replace("”", "\"");
             text = text.Replace("“", "\"");
 
+            // Fix accidental copy-pastes of similar-looking Japanese characters into English
+            text = text.Replace("＆", "&"); // 0xff06 (fullwidth ampersand) is intended to be ASCII ampersand
+            text = text.Replace("—", "―");  // 0x8213 (horizontal bar) is intended to be em-dash 0x8212
+
             text = text.Replace("--", "―"); // em dash replacement
-            text = text.Replace("—", "―");  // Replace unicode horizontal bar 0x8213 with em-dash 0x8212
+
             text = text.Replace("\r\n", "<br>");
             text = text.Replace("\n", "<br>");
             text = ProportionalWordWrapper.Default.Wrap(text, controlCodeRegex, "<br>");
