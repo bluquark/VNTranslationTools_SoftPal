@@ -66,6 +66,13 @@ namespace VNTextPatch.Shared.Scripts.Softpal
 
         private string SoftpalizeText(string text)
         {
+            bool noWrap = false;
+            if (text.StartsWith("<noWrap>") || text.StartsWith("<nowrap>"))
+            {
+                noWrap = true;
+                text = text.Substring(8, text.Length - 8);
+            }
+
             //                text = StringUtil.FancifyQuotes(text);
 
             // Remove directional quotes.  Softpal has buggy spacing with them, still need to diagnose why.
@@ -86,8 +93,17 @@ namespace VNTextPatch.Shared.Scripts.Softpal
 
             text = text.Replace("\r\n", "<br>");
             text = text.Replace("\n", "<br>");
-            text = ProportionalWordWrapper.Default.Wrap(text, controlCodeRegex, "<br>");
-            text = text.Replace(" ", "|");  // space replacement with pipe character (needs special handling in the font DLL)
+            if (!noWrap)
+            {
+                text = ProportionalWordWrapper.Default.Wrap(text, controlCodeRegex, "<br>");
+            }
+
+            // Characters with special handling in SoftPal that we remap to little-used ordinary characters and
+            // then remap back in VNTextProxy
+            text = text.Replace(" ", "|");
+
+            // %0: Heart emoji, %1: multiple sweat drops (stressed) emoji, %2: single sweat drop (awkward) emoji, %3: forehead-vein-popping (anger) emoji
+            text = Regex.Replace(text, @"%(?![0123])", "{");
 
             return text;
         }

@@ -4,7 +4,7 @@
 
 #include "pch.h"
 
-#define GDI_LOGGING 1
+#define GDI_LOGGING 0
 
 using namespace std;
 
@@ -379,15 +379,6 @@ std::string GlyphMetricsToString(const GLYPHMETRICS* gm)
     return oss.str();
 }
 
-#if 0
-UINT MapPipeToSpace(UINT ch) {
-    if (ch == '|') {
-        return ' ';
-    }
-    return ch;
-}
-#endif
-
 DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuFormat, LPGLYPHMETRICS lpgm, DWORD cjBuffer, LPVOID pvBuffer, MAT2* lpmat2)
 {
     string str;
@@ -400,11 +391,18 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
 
     UINT ch = wstr[0];
 
+    // Special workaround to make '{' behave as if it were a percentage character.
+    // This code is intended to reverse the '%' -> '{' replacement in SoftpalScript.WritePatched().
+    // (We can't use % characters in TEXT.DAT because they're used to display non-SJIS special characters, for example %0 is rendered as ❤.)
+    if (ch == '{') {
+        ch = '%';
+    }
+
     DWORD ret = GetGlyphOutlineW(hdc, ch, fuFormat, lpgm, cjBuffer, pvBuffer, lpmat2);
 
     // Special workaround to make '|' behave as if it were a space.
-    // This code is intended to work alongside the ' ' -> '|' replacement in SoftpalScript.WritePatched().
-    // (We can't use space characters because SoftPal hardcodes an advance distance and ignores the value of gmCellIncX for them.)
+    // This code is intended to reverse the ' ' -> '|' replacement in SoftpalScript.WritePatched().
+    // (We can't use space characters in TEXT.DAT because SoftPal hardcodes an advance distance for them.)
     if (ch == '|') {
         ch = ' ';
 
