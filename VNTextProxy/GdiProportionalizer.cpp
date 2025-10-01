@@ -239,6 +239,8 @@ HFONT GdiProportionalizer::CreateFontIndirectWHook(LOGFONTW* pFontInfo)
     return FontManager.FetchFont(CustomFontName, pFontInfo->lfHeight, Bold, Italic, Underline)->GetGdiHandle();
 }
 
+int totalAdvOut = 0;
+
 HGDIOBJ GdiProportionalizer::SelectObjectHook(HDC hdc, HGDIOBJ obj)
 {
 #if GDI_LOGGING
@@ -251,6 +253,8 @@ HGDIOBJ GdiProportionalizer::SelectObjectHook(HDC hdc, HGDIOBJ obj)
     Font* pFont = FontManager.GetFont(static_cast<HFONT>(obj));
     if (pFont != nullptr)
         CurrentFonts[hdc] = pFont;
+
+    totalAdvOut = 0;
 
     return SelectObject(hdc, obj);
 }
@@ -417,15 +421,19 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
     GetCharABCWidthsFloatW(hdc, ch, ch, &abc);
     double advanceF = abc.abcfA + abc.abcfB + abc.abcfC + kern;
     int advOut = (int)floor(advanceF + 0.5);
+    
+    if (pvBuffer) {
+        totalAdvOut += advOut;
+    }
 
 #if GDI_LOGGING
     FILE* log = nullptr;
     if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
-        fprintf(log, "GdiProportionalizer::GetGlyphOutlineAHook() fuFormat: %s, char: %s, 0x%x, pvBuffer: %d, cjBuffer: %d, metricsResult: %s, advOut: %d, a: %f, b: %f, c: %f, kern: %d\n", FuFormatToString(fuFormat).c_str(), reinterpret_cast<const char*>(wstr.c_str()), wstr[0], pvBuffer != NULL, cjBuffer, GlyphMetricsToString(lpgm).c_str(), advOut, abc.abcfA, abc.abcfB, abc.abcfC, kern);
+        fprintf(log, "GdiProportionalizer::GetGlyphOutlineAHook() fuFormat: %s, char: %s, 0x%x, pvBuffer: %d, cjBuffer: %d, metricsResult: %s, advOut: %d, totalAdvOut: %d, a: %f, b: %f, c: %f, kern: %d\n", FuFormatToString(fuFormat).c_str(), reinterpret_cast<const char*>(wstr.c_str()), wstr[0], pvBuffer != NULL, cjBuffer, GlyphMetricsToString(lpgm).c_str(), advOut, totalAdvOut, abc.abcfA, abc.abcfB, abc.abcfC, kern);
         fclose(log);
     }
 #endif
-    
+
     // SoftPal systematically adds 1 extra pixel of spacing after every character, beyond what the font specifies.
     // This is not very noticeable with Japanese characters, but it's extremely noticeable with a proportional Latin font.
     // Cancel out that behavior here.
