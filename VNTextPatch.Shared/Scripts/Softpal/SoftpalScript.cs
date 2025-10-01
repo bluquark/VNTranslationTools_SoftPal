@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Text.RegularExpressions;
 using VNTextPatch.Shared.Util;
 
 namespace VNTextPatch.Shared.Scripts.Softpal
@@ -56,18 +57,32 @@ namespace VNTextPatch.Shared.Scripts.Softpal
                 int addr = BitConverter.ToInt32(_code, operand.Offset);
                 textStream.Position = addr + 4;
                 string text = textReader.ReadZeroTerminatedSjisString();
-                text = text.Replace("<br>", "\r\n");
+//                text = text.Replace("<br>", "\r\n");
                 yield return new ScriptString(text, operand.Type);
             }
         }
 
+        private static Regex controlCodeRegex = new Regex(@"<([^>]+)>");
+
         private string SoftpalizeText(string text)
         {
             //                text = StringUtil.FancifyQuotes(text);
+
+            // Remove directional quotes.  Softpal has buggy spacing with them, still need to diagnose why.
+            // ‘	LEFT SINGLE QUOTATION MARK(U+2018)	SJIS:  8165
+            // ’	RIGHT SINGLE QUOTATION MARK(U+2019)	SJIS:  8166
+            // “	LEFT DOUBLE QUOTATION MARK(U+201C)	SJIS:  8167
+            // ”	RIGHT DOUBLE QUOTATION MARK(U+201D)	SJIS:  8168
+            text = text.Replace("‘", "'");
+            text = text.Replace("’", "'"); 
+            text = text.Replace("”", "\"");
+            text = text.Replace("“", "\"");
+
             text = text.Replace("--", "―"); // em dash replacement
             text = text.Replace("—", "―");  // Replace unicode horizontal bar 0x8213 with em-dash 0x8212
-            text = ProportionalWordWrapper.Default.Wrap(text);
             text = text.Replace("\r\n", "<br>");
+            text = text.Replace("\n", "<br>");
+            text = ProportionalWordWrapper.Default.Wrap(text, controlCodeRegex, "<br>");
             text = text.Replace(" ", "|");  // space replacement with pipe character (needs special handling in the font DLL)
 
             return text;
