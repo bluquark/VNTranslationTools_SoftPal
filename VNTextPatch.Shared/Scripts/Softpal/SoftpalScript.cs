@@ -149,11 +149,24 @@ namespace VNTextPatch.Shared.Scripts.Softpal
 
                     string logString = message1 + message2;
 
-//                    Console.WriteLine("Merged split line at " + iteration + ": " + logString);
-
                     logString = SoftpalizeText(logString);
                     message1 = SoftpalizeText(message1);
-                    message2 = logString.Substring(message1.Length);
+
+                    int firstMessageLength = message1.Length;
+                    // Final space may be converted to '<br>' so move the cutpoint back 1 to avoid splitting the control code
+                    if (message1[firstMessageLength - 1] == '|') { firstMessageLength--; }
+
+                    message1 = logString.Substring(0, firstMessageLength);
+                    message2 = logString.Substring(firstMessageLength);
+
+                    /*
+                    if (logString.StartsWith("\"Hey,|don't|go|getting|surprised")
+                        || logString.StartsWith("\"Breakfast|is|the|most|important")
+                        )
+                    {
+                        Console.WriteLine("Merged split line at " + iteration + ": LogString: " + logString
+                            + " message1: " + message1 + "message2: " + message2);
+                    }*/
 
                     WriteAndPatch(name1, operand.Offset);
                     stringStack.Add(logString);
