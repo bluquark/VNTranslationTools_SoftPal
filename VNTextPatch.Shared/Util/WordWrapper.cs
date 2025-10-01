@@ -47,7 +47,7 @@ namespace VNTextPatch.Shared.Util
 
             if (numLines >= 4)
             {
-                Console.WriteLine("Warning: more than 3 lines in string: " + result.ToString());
+                Console.WriteLine("Warning: " + numLines + " lines in: " + result.ToString());
             }
 
             return result.ToString();
