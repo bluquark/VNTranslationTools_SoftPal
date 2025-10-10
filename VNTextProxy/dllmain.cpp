@@ -1,5 +1,7 @@
 ﻿#include "pch.h"
 
+#include "PALHooks.h"
+
 void* OriginalEntryPoint;
 
 void Initialize();
@@ -37,6 +39,9 @@ void Initialize()
 
     EnginePatches::Init();
 
+    PALGrabCurrentText::Install();
+    PALVideoFix::Install();
+
     SetCurrentDirectoryW(Path::GetModuleFolderPath(nullptr).c_str());
 }
 
@@ -47,7 +52,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
     case DLL_PROCESS_ATTACH:
         Proxy::Init(hModule);
 
-#if GDI_LOGGING
+#if _DEBUG
         Initialize();
 #else
         OriginalEntryPoint = DetourGetEntryPoint(nullptr);

@@ -4,6 +4,8 @@
 
 #include "pch.h"
 
+#include "PALHooks.h"
+
 #define GDI_LOGGING 0
 
 using namespace std;
@@ -246,7 +248,7 @@ HGDIOBJ GdiProportionalizer::SelectObjectHook(HDC hdc, HGDIOBJ obj)
 #if GDI_LOGGING
     FILE* log = nullptr;
     if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
-        fprintf(log, "GdiProportionalizer::SelectObjectHook()\n");
+        fprintf(log, "GdiProportionalizer::SelectObjectHook(): currentText: %s\n", PALGrabCurrentText::get().c_str());
         fclose(log);
     }
 #endif

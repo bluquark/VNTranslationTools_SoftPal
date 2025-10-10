@@ -103,6 +103,7 @@
     <ClInclude Include="GdiProportionalizer.h" />
     <ClInclude Include="ImportHooker.h" />
     <ClInclude Include="LocaleEmulator.h" />
+    <ClInclude Include="PALHooks.h" />
     <ClInclude Include="Patches\BabelPatch.h" />
     <ClInclude Include="Patches\EnginePatches.h" />
     <ClInclude Include="PE\PE.h" />
@@ -131,6 +132,7 @@
     <ClCompile Include="GdiProportionalizer.cpp" />
     <ClCompile Include="ImportHooker.cpp" />
     <ClCompile Include="LocaleEmulator.cpp" />
+    <ClCompile Include="PALHooks.cpp" />
     <ClCompile Include="Patches\BabelPatch.cpp" />
     <ClCompile Include="Patches\EnginePatches.cpp" />
     <ClCompile Include="PE\PE.cpp" />
