@@ -41,6 +41,9 @@ GdiProportionalizer::SelectObjectHook()
 GdiProportionalizer::DeleteObjectHook()
 */
 
+static std::unordered_map<uint32_t, int> kernAmounts;
+int currentTextOffset;
+
 void GdiProportionalizer::Init()
 {
 #if GDI_LOGGING
@@ -256,9 +259,56 @@ HGDIOBJ GdiProportionalizer::SelectObjectHook(HDC hdc, HGDIOBJ obj)
     if (pFont != nullptr)
         CurrentFonts[hdc] = pFont;
 
+    currentTextOffset = 0;
     totalAdvOut = 0;
 
-    return SelectObject(hdc, obj);
+    HGDIOBJ ret = SelectObject(hdc, obj);
+
+    DWORD count = GetKerningPairsW(hdc, 0, nullptr);
+    if (count == 0) {
+#if GDI_LOGGING
+        FILE* log = nullptr;
+        if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
+            fprintf(log, "A: 0 kerning pairs\n");
+            fclose(log);
+        }
+#endif
+        // No pairs or error; optionally check GetLastError()
+        return ret;
+    }
+
+    // Allocate and fetch the pairs
+    std::vector<KERNINGPAIR> pairs(count);
+    DWORD got = GetKerningPairsW(hdc, count, pairs.data());
+    if (got == 0) {
+#if GDI_LOGGING
+        FILE* log = nullptr;
+        if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
+            fprintf(log, "B: 0 kerning pairs\n");
+            fclose(log);
+        }
+#endif
+        // Failed; optionally check GetLastError()
+        return ret;
+    }
+
+    // Store as key = wFirst | (wSecond << 16), value = iKernAmount
+    kernAmounts.reserve(kernAmounts.size() + got);
+    for (DWORD i = 0; i < got; ++i) {
+        const KERNINGPAIR& kp = pairs[i];
+/*#if GDI_LOGGING
+        FILE* log = nullptr;
+        if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
+            fprintf(log, "Kerning pair: %d, %d, %d\n", kp.wFirst, kp.wSecond, kp.iKernAmount);
+            fclose(log);
+        }
+#endif//*/
+        uint32_t key = static_cast<uint32_t>(kp.wFirst)
+            | (static_cast<uint32_t>(kp.wSecond) << 16);
+        kernAmounts[key] = static_cast<int>(kp.iKernAmount);
+    }
+
+    return ret;
 }
 
 BOOL GdiProportionalizer::DeleteObjectHook(HGDIOBJ obj)
@@ -381,21 +431,34 @@ std::string GlyphMetricsToString(const GLYPHMETRICS* gm)
     return oss.str();
 }
 
-DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuFormat, LPGLYPHMETRICS lpgm, DWORD cjBuffer, LPVOID pvBuffer, MAT2* lpmat2)
-{
-    string str;
-    while (uChar != 0)
-    {
-        str.insert(0, 1, (char)uChar);
-        uChar >>= 8;
+static const unsigned char* sjis_next_char(const unsigned char* p) {
+    if (!p || *p == '\0') return p; // Null or end of string
+
+    unsigned char c = *p;
+
+    // Double-byte lead byte ranges:
+    // 0x81–0x9F or 0xE0–0xEF
+    if ((c >= 0x81 && c <= 0x9F) || (c >= 0xE0 && c <= 0xEF)) {
+        // Ensure next byte exists before advancing
+        if (*(p + 1) != '\0')
+            return p + 2;
+        else
+            return p + 1; // Avoid reading past string end
     }
-    wstring wstr = SjisTunnelEncoding::Decode(str);
+
+    // Otherwise, single-byte character (ASCII or half-width kana)
+    return p + 1;
+}
+
+static UINT SJISCharToUnicode(const string& sjisStr, bool mapPipeToSpace) {
+
+    wstring wstr = SjisTunnelEncoding::Decode(sjisStr);
 
     UINT ch = wstr[0];
 
     // Workarounds for characters that don't appear correctly if plumbed through via normal SJIS character codes.
     // This code is intended to reverse the replacements into the half-width katakana range in SoftpalScript.WritePatched().
-    switch (str[0]) {
+    switch (sjisStr[0]) {
     case 'ｱ':
         ch = u'%'; break;
     case 'ｫ':
@@ -409,6 +472,23 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
     case 'ｲ':
         ch = u'é'; break;
     }
+
+    if (mapPipeToSpace && ch == '|') {
+        ch = ' ';
+    }
+
+    return ch;
+}
+
+DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuFormat, LPGLYPHMETRICS lpgm, DWORD cjBuffer, LPVOID pvBuffer, MAT2* lpmat2)
+{
+    string sjisStr;
+    while (uChar != 0)
+    {
+        sjisStr.insert(0, 1, (char)uChar);
+        uChar >>= 8;
+    }
+    UINT ch = SJISCharToUnicode(sjisStr, false);
 
     DWORD ret = GetGlyphOutlineW(hdc, ch, fuFormat, lpgm, cjBuffer, pvBuffer, lpmat2);
 
@@ -425,27 +505,40 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
         }
     }
 
-    // TODO: Populate this value
-    int kern = 0;
+    const unsigned char* textString = (const unsigned char*) PALGrabCurrentText::get().c_str();
+    const unsigned char* currentChar = textString + currentTextOffset;
+    int sjisCharLength = sjis_next_char(currentChar) - currentChar;
+
+    // TODO: support skipping control codes
+    const unsigned char* nextChar = currentChar + sjisCharLength;
+    int sjisNextCharLength = sjis_next_char(nextChar) - nextChar;
+    string nextCharStr;
+    while (sjisNextCharLength > 0) {
+        nextCharStr.insert(0, 1, *nextChar);
+        nextChar++;
+        sjisNextCharLength--;
+    }
+    UINT nextCharUnicode = SJISCharToUnicode(nextCharStr, true);
+
+    uint32_t kernKey = static_cast<uint32_t>(ch) | (static_cast<uint32_t>(nextCharUnicode) << 16);
+    int kern = kernAmounts[kernKey];
 
     ABCFLOAT abc;
     GetCharABCWidthsFloatW(hdc, ch, ch, &abc);
     double advanceF = abc.abcfA + abc.abcfB + abc.abcfC + kern;
     int advOut = (int)floor(advanceF + 0.5);
     
-    if (pvBuffer) {
-        totalAdvOut += advOut;
-    }
-
 #if GDI_LOGGING
     FILE* log = nullptr;
     if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
-        fprintf(log, "GdiProportionalizer::GetGlyphOutlineAHook() fuFormat: %s, char: %s, wchar: %s, 0x%x, pvBuffer: %d, cjBuffer: %d, metricsResult: %s, advOut: %d, "
+        fprintf(log, "GdiProportionalizer::GetGlyphOutlineAHook() codepage: %d, fuFormat: %s, sjisChar: %s, currentText char: %c, Unicode 0x%x, nextChar: %c, pvBuffer: %d, cjBuffer: %d, metricsResult: %s, advOut: %d, "
             "totalAdvOut: %d, a: %f, b: %f, c: %f, kern: %d\n",
+            GetACP(),
             FuFormatToString(fuFormat).c_str(),
-            reinterpret_cast<const char*>(str.c_str()),
-            reinterpret_cast<const char*>(wstr.c_str()),
-            wstr[0],
+            reinterpret_cast<const char*>(sjisStr.c_str()),
+            *currentChar,
+            ch,
+            (char) nextCharUnicode,
             pvBuffer != NULL,
             cjBuffer,
             GlyphMetricsToString(lpgm).c_str(),
@@ -453,6 +546,21 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
         fclose(log);
     }
 #endif
+
+    if (pvBuffer) {
+        currentTextOffset += sjisCharLength;
+        currentChar += sjisCharLength;
+        while (*currentChar == '<') {
+            const unsigned char* previousChar;
+            do {
+                sjisCharLength = sjis_next_char(currentChar) - currentChar;
+                currentTextOffset += sjisCharLength;
+                previousChar = currentChar;
+                currentChar += sjisCharLength;
+            } while (*previousChar != '>' && *currentChar != '\0');
+        }
+        totalAdvOut += advOut;
+    }
 
     // SoftPal systematically adds 1 extra pixel of spacing after every character, beyond what the font specifies.
     // This is not very noticeable with Japanese characters, but it's extremely noticeable with a proportional Latin font.
@@ -555,3 +663,4 @@ TEXTMETRICA GdiProportionalizer::ConvertTextMetricWToA(const TEXTMETRICW& textMe
     textMetricA.tmWeight = textMetricW.tmWeight;
     return textMetricA;
 }
+

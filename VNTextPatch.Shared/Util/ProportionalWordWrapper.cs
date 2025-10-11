@@ -71,9 +71,8 @@ namespace VNTextPatch.Shared.Util
             for (int i = offset; i < offset + length; i++)
             {
                 width += GetCharWidth(text[i]);
-                // Kerning isn't supported in SoftPal so don't take it into account for word wrapping.
-//                if (i > offset)
-//                    width += GetKernAmount(text[i - 1], text[i]);
+                if (i > offset)
+                    width += GetKernAmount(text[i - 1], text[i]);
             }
             return width;
         }
