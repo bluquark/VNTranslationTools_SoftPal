@@ -73,17 +73,7 @@ namespace VNTextPatch.Shared.Scripts.Softpal
                 text = text.Substring(8, text.Length - 8);
             }
 
-            //                text = StringUtil.FancifyQuotes(text);
-
-            // Remove directional quotes.  Softpal has buggy spacing with them, still need to diagnose why.
-            // ‘	LEFT SINGLE QUOTATION MARK(U+2018)	SJIS:  8165
-            // ’	RIGHT SINGLE QUOTATION MARK(U+2019)	SJIS:  8166
-            // “	LEFT DOUBLE QUOTATION MARK(U+201C)	SJIS:  8167
-            // ”	RIGHT DOUBLE QUOTATION MARK(U+201D)	SJIS:  8168
-            text = text.Replace("‘", "'");
-            text = text.Replace("’", "'"); 
-            text = text.Replace("”", "\"");
-            text = text.Replace("“", "\"");
+            text = StringUtil.FancifyQuotes(text);
 
             // Fix accidental copy-pastes of similar-looking Japanese characters into English
             text = text.Replace("＆", "&"); // 0xff06 (fullwidth ampersand) is intended to be ASCII ampersand
@@ -98,12 +88,20 @@ namespace VNTextPatch.Shared.Scripts.Softpal
                 text = ProportionalWordWrapper.Default.Wrap(text, controlCodeRegex, "<br>");
             }
 
-            // Characters with special handling in SoftPal that we remap to little-used ordinary characters and
-            // then remap back in VNTextProxy
+            // Remap characters that don't plumb correctly in SoftPal to half-width katakana
+            // (they will be mapped back in VNTextProxy)
+            text = text.Replace("“", "ｫ"); // « in latin1
+            text = text.Replace("”", "ｻ"); // » in latin1
+            text = text.Replace("‘", "ｨ");
+            text = text.Replace("’", "ｴ");
+
+            text = text.Replace("é", "ｲ");
+
             text = text.Replace(" ", "|");
 
+            // Replace percentage symbol only if it's not used as a control code
             // %0: Heart emoji, %1: multiple sweat drops (stressed) emoji, %2: single sweat drop (awkward) emoji, %3: forehead-vein-popping (anger) emoji
-            text = Regex.Replace(text, @"%(?![0123])", "{");
+            text = Regex.Replace(text, @"%(?![0123])", "ｱ");
 
             return text;
         }

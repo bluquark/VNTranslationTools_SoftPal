@@ -22,12 +22,14 @@ wstring SjisTunnelEncoding::Decode(const char* pText, int count)
             if (lowByte == 0)
                 break;
 
+#if 0
             int mappingIdx = TunnelCharToMappingIndex((WORD)((highByte << 8) | lowByte));
             if (mappingIdx >= 0)
             {
                 result += Mappings[mappingIdx];
                 continue;
             }
+#endif
         }
 
         int charLength = lowByte == 0 ? 1 : 2;

@@ -393,22 +393,33 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
 
     UINT ch = wstr[0];
 
-    // Special workaround to make '{' behave as if it were a percentage character.
-    // This code is intended to reverse the '%' -> '{' replacement in SoftpalScript.WritePatched().
-    // (We can't use % characters in TEXT.DAT because they're used to display non-SJIS special characters, for example %0 is rendered as ❤.)
-    if (ch == '{') {
-        ch = '%';
+    // Workarounds for characters that don't appear correctly if plumbed through via normal SJIS character codes.
+    // This code is intended to reverse the replacements into the half-width katakana range in SoftpalScript.WritePatched().
+    switch (str[0]) {
+    case 'ｱ':
+        ch = u'%'; break;
+    case 'ｫ':
+        ch = u'“'; break;
+    case 'ｻ':
+        ch = u'”'; break;
+    case 'ｨ':
+        ch = u'‘'; break;
+    case 'ｴ':
+        ch = u'’'; break;
+    case 'ｲ':
+        ch = u'é'; break;
     }
 
     DWORD ret = GetGlyphOutlineW(hdc, ch, fuFormat, lpgm, cjBuffer, pvBuffer, lpmat2);
 
-    // Special workaround to make '|' behave as if it were a space.
+    // Workaround to make '|' behave as if it were a space.
     // This code is intended to reverse the ' ' -> '|' replacement in SoftpalScript.WritePatched().
     // (We can't use space characters in TEXT.DAT because SoftPal hardcodes an advance distance for them.)
     if (ch == '|') {
         ch = ' ';
 
         // Wipe all pixels from the bitmap GetGlyphOutlineW created
+        // (This substitution needs to be after the GetGlyphOutlineW call to avoid a crash.)
         if (pvBuffer && cjBuffer >= ret) {
             memset(pvBuffer, 0, ret);
         }
@@ -429,7 +440,16 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
 #if GDI_LOGGING
     FILE* log = nullptr;
     if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
-        fprintf(log, "GdiProportionalizer::GetGlyphOutlineAHook() fuFormat: %s, char: %s, 0x%x, pvBuffer: %d, cjBuffer: %d, metricsResult: %s, advOut: %d, totalAdvOut: %d, a: %f, b: %f, c: %f, kern: %d\n", FuFormatToString(fuFormat).c_str(), reinterpret_cast<const char*>(wstr.c_str()), wstr[0], pvBuffer != NULL, cjBuffer, GlyphMetricsToString(lpgm).c_str(), advOut, totalAdvOut, abc.abcfA, abc.abcfB, abc.abcfC, kern);
+        fprintf(log, "GdiProportionalizer::GetGlyphOutlineAHook() fuFormat: %s, char: %s, wchar: %s, 0x%x, pvBuffer: %d, cjBuffer: %d, metricsResult: %s, advOut: %d, "
+            "totalAdvOut: %d, a: %f, b: %f, c: %f, kern: %d\n",
+            FuFormatToString(fuFormat).c_str(),
+            reinterpret_cast<const char*>(str.c_str()),
+            reinterpret_cast<const char*>(wstr.c_str()),
+            wstr[0],
+            pvBuffer != NULL,
+            cjBuffer,
+            GlyphMetricsToString(lpgm).c_str(),
+            advOut, totalAdvOut, abc.abcfA, abc.abcfB, abc.abcfC, kern);
         fclose(log);
     }
 #endif
