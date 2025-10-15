@@ -42,7 +42,8 @@ GdiProportionalizer::DeleteObjectHook()
 */
 
 static std::unordered_map<uint32_t, int> kernAmounts;
-int currentTextOffset;
+static int currentTextOffset = 0;
+static int totalAdvOut = 0;
 
 void GdiProportionalizer::Init()
 {
@@ -244,8 +245,6 @@ HFONT GdiProportionalizer::CreateFontIndirectWHook(LOGFONTW* pFontInfo)
     return FontManager.FetchFont(CustomFontName, pFontInfo->lfHeight, Bold, Italic, Underline)->GetGdiHandle();
 }
 
-int totalAdvOut = 0;
-
 HGDIOBJ GdiProportionalizer::SelectObjectHook(HDC hdc, HGDIOBJ obj)
 {
 #if GDI_LOGGING
@@ -258,9 +257,6 @@ HGDIOBJ GdiProportionalizer::SelectObjectHook(HDC hdc, HGDIOBJ obj)
     Font* pFont = FontManager.GetFont(static_cast<HFONT>(obj));
     if (pFont != nullptr)
         CurrentFonts[hdc] = pFont;
-
-    currentTextOffset = 0;
-    totalAdvOut = 0;
 
     HGDIOBJ ret = SelectObject(hdc, obj);
 
@@ -320,6 +316,11 @@ BOOL GdiProportionalizer::DeleteObjectHook(HGDIOBJ obj)
         fclose(log);
     }
 #endif
+
+    currentTextOffset = 0;
+    totalAdvOut = 0;
+    Italic = false;
+    Bold = false;
 
     Font* pFont = FontManager.GetFont(static_cast<HFONT>(obj));
     if (pFont != nullptr)
@@ -509,7 +510,7 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
     const unsigned char* currentChar = textString + currentTextOffset;
     int sjisCharLength = sjis_next_char(currentChar) - currentChar;
 
-    // TODO: support skipping control codes
+    // TODO: support skipping control codes here (for the rare situation where control code is between two characters with nonzero kerning relationship)
     const unsigned char* nextChar = currentChar + sjisCharLength;
     int sjisNextCharLength = sjis_next_char(nextChar) - nextChar;
     string nextCharStr;
@@ -548,9 +549,35 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
 #endif
 
     if (pvBuffer) {
+        bool fontChanged = false;
         currentTextOffset += sjisCharLength;
         currentChar += sjisCharLength;
         while (*currentChar == '<') {
+            #if GDI_LOGGING
+                FILE* log = nullptr;
+                if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
+                    fprintf(log, "GdiProportionalizer control code currentChar: %s\n", currentChar);
+                    fclose(log);
+                }
+            #endif
+
+            if (!strncmp((const char*) currentChar, "<i>", strlen("<i>")) && Italic != true) {
+                Italic = true;
+                fontChanged = true;
+            }
+            if (!strncmp((const char*) currentChar, "</i>", strlen("</i>")) && Italic != false) {
+                Italic = false;
+                fontChanged = true;
+            }
+            if (!strncmp((const char*)currentChar, "<b>", strlen("<b>")) && Bold != true) {
+                Bold = true;
+                fontChanged = true;
+            }
+            if (!strncmp((const char*)currentChar, "</b>", strlen("</b>")) && Bold != false) {
+                Bold = false;
+                fontChanged = true;
+            }
+
             const unsigned char* previousChar;
             do {
                 sjisCharLength = sjis_next_char(currentChar) - currentChar;
@@ -560,6 +587,22 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
             } while (*previousChar != '>' && *currentChar != '\0');
         }
         totalAdvOut += advOut;
+
+        if (fontChanged) {
+#if GDI_LOGGING
+            FILE* log = nullptr;
+            if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
+                fprintf(log, "GdiProportionalizer font properties changed: Bold: %d, Italic: %d, Underline: %d\n", Bold, Italic, Underline);
+                fclose(log);
+            }
+#endif
+            Font* pFont = CurrentFonts[hdc];
+            if (pFont != nullptr && !CustomFontName.empty())
+            {
+                pFont = FontManager.FetchFont(CustomFontName, pFont->GetHeight(), Bold, Italic, Underline);
+                SelectObjectHook(hdc, pFont->GetGdiHandle());
+            }
+        }
     }
 
     // SoftPal systematically adds 1 extra pixel of spacing after every character, beyond what the font specifies.
