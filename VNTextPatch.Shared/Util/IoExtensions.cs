@@ -9,6 +9,7 @@ namespace VNTextPatch.Shared.Util
         private static readonly byte[] TextBuffer = new byte[10000];
 
         public static int SoftpalMessageMinStackCount = 3;
+        public static int DisableNameColors = 0;
 
         public static void Skip(this BinaryReader reader, int length)
         {

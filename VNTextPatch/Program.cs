@@ -309,6 +309,9 @@ namespace VNTextPatch
                         case "minStackCount":
                             IoExtensions.SoftpalMessageMinStackCount = int.Parse(value);
                             break;
+                        case "disableNameColors":
+                            IoExtensions.DisableNameColors = int.Parse(value);
+                            break;
                     }
                 }
 

@@ -196,9 +196,33 @@ namespace VNTextPatch.Shared.Scripts.Softpal
                     HandleSelectChoiceInstruction(instr);
                     break;
 
+                case 0x2001C:
+                    HandleSetTextColorInstruction(instr);
+                    break;
+
                 default:
                     _stack.Clear();
                     break;
+            }
+        }
+
+        private void HandleSetTextColorInstruction(Instruction instr)
+        {
+            try
+            {
+                if (_stack.Count < 2)
+                    return;
+                _stack.Pop(); // color
+                Operand speakerName = _stack.Pop();
+                if (IoExtensions.DisableNameColors == 0)
+                {
+                    TextAddressEncountered?.Invoke(speakerName.Offset, ScriptStringType.Message);
+                }
+            }
+            finally
+            {
+                _stack.Clear();
+                _variables.Clear();
             }
         }
 
