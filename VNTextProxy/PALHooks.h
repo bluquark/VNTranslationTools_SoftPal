@@ -2,7 +2,7 @@
 
 namespace PALGrabCurrentText {
 	bool Install();
-	const string& get();
+	const unsigned char* get();
 }
 
 namespace PALVideoFix {

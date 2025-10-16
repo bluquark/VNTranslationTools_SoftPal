@@ -6,72 +6,53 @@
 
 #define PALTEXT_LOGGING 0
 
-namespace PALGrabCurrentText
-{
 #ifdef PALTEXT_LOGGING
-    static FILE* g_logFile = nullptr;
-    static void dbg_log(const char* format, ...)
+static FILE* g_logFile = nullptr;
+static void dbg_log(const char* format, ...)
+{
+    if (!g_logFile)
+        g_logFile = _fsopen("./PALhooks.log", "w", _SH_DENYNO);
+    if (g_logFile)
     {
-        if (!g_logFile)
-            g_logFile = _fsopen("./GrabText_hook.log", "w", _SH_DENYNO);
-        if (g_logFile)
-        {
-            va_list args;
-            va_start(args, format);
-            vfprintf(g_logFile, format, args);
-            fprintf(g_logFile, "\n");
-            va_end(args);
-            fflush(g_logFile);
-        }
+        va_list args;
+        va_start(args, format);
+        vfprintf(g_logFile, format, args);
+        fprintf(g_logFile, "\n");
+        va_end(args);
+        fflush(g_logFile);
     }
+}
 #else
 #define dbg_log(...)
 #endif
 
-    static string currentText;
-    const string& get() { return currentText; }
+namespace PALGrabCurrentText
+{
+    static void* (__cdecl* oPalTaskGetSubTaskData)() = nullptr;
 
-    constexpr uintptr_t CREATE_TEXT_SPRITES_RVA = 0x0019C10;
-    static void* oCreateTextSprites = nullptr;
-
-    static void LogText(const char* text)
+    const unsigned char* get()
     {
-        currentText = text;
-
-#ifdef PALTEXT_LOGGING
-        dbg_log("Text: %s", text);
-#endif
-    }
-
-    // this method's calling convention is quite funky.
-    extern "C" __declspec(naked) void CreateTextSprites_Hook()
-    {
-        __asm {
-            mov     eax, [esp + 8]
-
-            pushfd
-            pushad
-            push    eax // text
-            call    LogText
-            add     esp, 4
-            popad
-            popfd
-
-            jmp     oCreateTextSprites
-        }
+        return (const unsigned char*)oPalTaskGetSubTaskData() + 0x204;
     }
 
     bool Install()
     {
-        uint8_t* base = (uint8_t*)GetModuleHandle(nullptr);
-        oCreateTextSprites = base + CREATE_TEXT_SPRITES_RVA;
+        dbg_log("PalGrabCurrentText::Install start");
 
-        DetourTransactionBegin();
-        DetourUpdateThread(GetCurrentThread());
-        DetourAttach(&oCreateTextSprites, CreateTextSprites_Hook);
-        LONG error = DetourTransactionCommit();
+        LoadLibraryA("./dll/ogg.dll");
+        LoadLibraryA("./dll/vorbis.dll");
+        LoadLibraryA("./dll/vorbisfile.dll");
+        HMODULE hMod = LoadLibraryA("./dll/PAL.dll");
+        if (!hMod)
+            return false;
 
-        return error == NO_ERROR;
+        oPalTaskGetSubTaskData = (decltype(oPalTaskGetSubTaskData))GetProcAddress(hMod, "PalTaskGetSubTaskData");
+        if (!oPalTaskGetSubTaskData)
+            return false;
+
+        dbg_log("PalGrabCurrentText::Install completed");
+
+        return true;
     }
 }
 
@@ -86,28 +67,6 @@ namespace PALVideoFix
         constexpr const char* TARGET_DLL_NAME = "./dll/PAL.dll";
         constexpr const char* TARGET_FUNCTION_NAME = "PalVideoPlay";
         constexpr uintptr_t GAME_MANAGER_POINTER_OFFSET = 0x30989F8;
-
-#ifdef PALTEXT_LOGGING
-        static FILE* g_debugLogFile = nullptr;
-        static void dbg_log(const char* format, ...)
-        {
-            if (!g_debugLogFile)
-            {
-                fopen_s(&g_debugLogFile, "./VideoFix_hook_debug.log", "w");
-            }
-            if (g_debugLogFile)
-            {
-                va_list args;
-                va_start(args, format);
-                vfprintf(g_debugLogFile, format, args);
-                fprintf(g_debugLogFile, "\n");
-                va_end(args);
-                fflush(g_debugLogFile);
-            }
-        }
-#else
-#define dbg_log(...)
-#endif
 
 #pragma pack(push, 1)
         struct GameManager

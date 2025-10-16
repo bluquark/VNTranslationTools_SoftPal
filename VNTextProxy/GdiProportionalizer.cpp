@@ -250,7 +250,7 @@ HGDIOBJ GdiProportionalizer::SelectObjectHook(HDC hdc, HGDIOBJ obj)
 #if GDI_LOGGING
     FILE* log = nullptr;
     if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
-        fprintf(log, "GdiProportionalizer::SelectObjectHook(): currentText: %s\n", PALGrabCurrentText::get().c_str());
+        fprintf(log, "GdiProportionalizer::SelectObjectHook(): currentText: %s\n", PALGrabCurrentText::get());
         fclose(log);
     }
 #endif
@@ -506,7 +506,7 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
         }
     }
 
-    const unsigned char* textString = (const unsigned char*) PALGrabCurrentText::get().c_str();
+    const unsigned char* textString = PALGrabCurrentText::get();
     const unsigned char* currentChar = textString + currentTextOffset;
     int sjisCharLength = sjis_next_char(currentChar) - currentChar;
 
