@@ -15,10 +15,28 @@ namespace VNTextPatch.Shared.Scripts.Softpal
 
         public string Extension => ".src";
 
+        private void expandMaxLineLength()
+        {
+            //Console.WriteLine("Modifying max line length");
+            int originalVal = 528;
+            // screen width is around 610, textbox boundary around 570.
+            // Note that raising this also slows down text fade-in across lines
+            int replacementVal = 580; 
+
+            int expectedOffset = 0x26084;
+            if (_code[expectedOffset] == (originalVal & 0xFF) && _code[expectedOffset+1] == (originalVal >> 8))
+            {
+                _code[expectedOffset] = (byte) (replacementVal & 0xFF);
+                _code[expectedOffset+1] = (byte) (replacementVal >> 8);
+                //Console.WriteLine("Replaced max line length from " + originalVal + " to " + replacementVal);
+            }
+        }
         public void Load(ScriptLocation location)
         {
             string codeFilePath = location.ToFilePath();
             _code = File.ReadAllBytes(codeFilePath);
+
+            expandMaxLineLength();
 
             string folderPath = Path.GetDirectoryName(codeFilePath);
             string textFilePath = Path.Combine(folderPath, "TEXT.DAT");
@@ -80,6 +98,7 @@ namespace VNTextPatch.Shared.Scripts.Softpal
             text = text.Replace("—", "―");  // 0x8213 (horizontal bar) is intended to be em-dash 0x8212
 
             text = text.Replace("--", "―"); // em dash replacement
+            text = text.Replace("…", "..."); // ellipsis replacement
 
             text = text.Replace("\r\n", "<br>");
             text = text.Replace("\n", "<br>");
