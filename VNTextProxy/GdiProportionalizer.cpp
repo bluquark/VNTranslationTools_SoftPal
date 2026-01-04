@@ -6,7 +6,7 @@
 
 #include "PALHooks.h"
 
-#define GDI_LOGGING 0
+#define GDI_LOGGING 1
 
 using namespace std;
 
@@ -223,26 +223,50 @@ HFONT GdiProportionalizer::CreateFontWHook(int cHeight, int cWidth, int cEscapem
     return CreateFontIndirectWHook(&fontInfo);
 }
 
+std::string WideToUTF8(const wchar_t* wstr)
+{
+    int size = WideCharToMultiByte(
+        CP_UTF8, 0, wstr, -1, nullptr, 0, nullptr, nullptr);
+
+    std::string result(size - 1, '\0');
+    WideCharToMultiByte(
+        CP_UTF8, 0, wstr, -1, result.data(), size, nullptr, nullptr);
+
+    return result;
+}
+
 HFONT GdiProportionalizer::CreateFontIndirectWHook(LOGFONTW* pFontInfo)
 {
-
     if (CustomFontName.empty())
     {
         LastFontName = pFontInfo->lfFaceName;
+#if GDI_LOGGING
+        FILE* log = nullptr;
+        if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
+            fprintf(log, "GdiProportionalizer::CreateFontIndirectWHook(): engineRequestedFaceName: %s, height: %d \n",
+                WideToUTF8(pFontInfo->lfFaceName).c_str(), pFontInfo->lfHeight);
+            fclose(log);
+        }
+#endif
+
         return FontManager.FetchFont(*pFontInfo)->GetGdiHandle();
     }
+
+//    LONG height = pFontInfo->lfHeight; // normally 21
+    LONG height = 27;
 
     LastFontName = CustomFontName;
 
 #if GDI_LOGGING
     FILE* log = nullptr;
     if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
-        fprintf(log, "GdiProportionalizer::CreateFontIndirectWHook(): CustomFontName: %ls, height: %d \n", CustomFontName.c_str(), pFontInfo->lfHeight);
+        fprintf(log, "GdiProportionalizer::CreateFontIndirectWHook(): CustomFontName: %ls, height: %d \n",
+            CustomFontName.c_str(), height);
         fclose(log);
     }
 #endif
 
-    return FontManager.FetchFont(CustomFontName, pFontInfo->lfHeight, Bold, Italic, Underline)->GetGdiHandle();
+    return FontManager.FetchFont(CustomFontName, height, Bold, Italic, Underline)->GetGdiHandle();
 }
 
 HGDIOBJ GdiProportionalizer::SelectObjectHook(HDC hdc, HGDIOBJ obj)
@@ -276,14 +300,13 @@ HGDIOBJ GdiProportionalizer::SelectObjectHook(HDC hdc, HGDIOBJ obj)
     // Allocate and fetch the pairs
     std::vector<KERNINGPAIR> pairs(count);
     DWORD got = GetKerningPairsW(hdc, count, pairs.data());
-    if (got == 0) {
 #if GDI_LOGGING
-        FILE* log = nullptr;
-        if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
-            fprintf(log, "B: 0 kerning pairs\n");
-            fclose(log);
-        }
+    if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
+        fprintf(log, "B: %d kerning pairs\n", got);
+        fclose(log);
+    }
 #endif
+    if (got == 0) {
         // Failed; optionally check GetLastError()
         return ret;
     }
@@ -529,6 +552,10 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
     double advanceF = abc.abcfA + abc.abcfB + abc.abcfC + kern;
     int advOut = (int)floor(advanceF + 0.5);
     
+#if 1
+    lpgm->gmptGlyphOrigin.y += 4;
+#endif
+
 #if GDI_LOGGING
     FILE* log = nullptr;
     if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
