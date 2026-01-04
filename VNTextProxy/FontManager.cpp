@@ -17,6 +17,7 @@ Font* FontManager::FetchFont(const wstring& faceName, int height, bool bold, boo
     wcscpy_s(info.lfFaceName, faceName.c_str());
     info.lfHeight = height;
     info.lfWeight = bold ? FW_BOLD : FW_NORMAL;
+//    info.lfWeight = FW_BOLD;
     info.lfItalic = italic;
     info.lfUnderline = underline;
 

@@ -1,10 +1,14 @@
-﻿#include <string>
+﻿#include "pch.h"
+
+#include <string>
 #include <sstream>
 #include <iomanip>
-
-#include "pch.h"
+#include <usp10.h>
+#include <vector>
 
 #include "PALHooks.h"
+
+#pragma comment(lib, "usp10.lib")
 
 #define GDI_LOGGING 1
 
@@ -504,6 +508,124 @@ static UINT SJISCharToUnicode(const string& sjisStr, bool mapPipeToSpace) {
     return ch;
 }
 
+static int GetStringAdvance(HDC hdc, SCRIPT_CACHE* psc,
+    const wchar_t* text, int count)
+{
+    SCRIPT_ITEM items[4];
+    int numItems = 0;
+    if (FAILED(ScriptItemize(text, count, _countof(items), nullptr, nullptr, items, &numItems)))
+        return 0;
+
+    // Single run assumed; for real text, loop items.
+    int runLen = (numItems >= 1) ? (count - items[0].iCharPos) : count;
+
+    std::vector<WORD> glyphs(count * 3);
+    std::vector<WORD> logClust(count);
+    std::vector<SCRIPT_VISATTR> visAttr(glyphs.size());
+    int numGlyphs = 0;
+
+    HRESULT hr = ScriptShape(hdc, psc, text, count, (int)glyphs.size(),
+        &items[0].a, glyphs.data(), logClust.data(),
+        visAttr.data(), &numGlyphs);
+    if (FAILED(hr) || numGlyphs <= 0) return 0;
+
+    std::vector<int> advances(numGlyphs);
+    std::vector<GOFFSET> offsets(numGlyphs);
+    ABC abc = {};
+
+    hr = ScriptPlace(hdc, psc, glyphs.data(), numGlyphs,
+        visAttr.data(), &items[0].a,
+        advances.data(), offsets.data(), &abc);
+    if (FAILED(hr)) return 0;
+
+    // Total advance
+    int total = 0;
+    for (int i = 0; i < numGlyphs; ++i) total += advances[i];
+    return total;
+}
+
+static int GetKerningAdjustment(HDC hdc, SCRIPT_CACHE* psc, wchar_t c1, wchar_t c2) {
+    // 1. Setup the pair string
+    wchar_t pair[2] = { c1, c2 };
+
+#if GDI_LOGGING
+    FILE* log = nullptr;
+    if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
+        fprintf(log, "GdiProportionalizer::GetKerningAdjustment A: c1: %lc, c2: %lc\n", c1, c2);
+        fclose(log);
+    }
+#endif
+
+#if 0
+    // Preparation for Uniscribe
+    SCRIPT_ITEM items[3];
+    int numItems = 0;
+    // We assume a single script/item for a two-character pair
+    if (FAILED(ScriptItemize(pair, 2, 2, NULL, NULL, items, &numItems))) return 0;
+
+    auto GetAdvanceWidth = [&](const wchar_t* text, int count) -> int {
+        int numGlyphs = 0;
+        std::vector<WORD> glyphs(count * 2);
+        std::vector<SCRIPT_VISATTR> visAttr(count * 2);
+        std::vector<WORD> logClust(count * 2);
+
+        HRESULT hr = ScriptShape(hdc, psc, text, count, (int)glyphs.size(),
+            &items[0].a, glyphs.data(), logClust.data(),
+            visAttr.data(), &numGlyphs);
+
+        if (SUCCEEDED(hr)) {
+            std::vector<int> advances(numGlyphs);
+            std::vector<GOFFSET> offsets(numGlyphs);
+            ABC overallABC;
+
+            hr = ScriptPlace(hdc,
+                psc,
+                glyphs.data(),
+                numGlyphs,
+                visAttr.data(),
+                &items[0].a,
+                advances.data(),
+                offsets.data(),
+                &overallABC);
+
+            if (SUCCEEDED(hr) && numGlyphs > 0) {
+                return advances[0];
+            }
+        }
+        return 0;
+        };
+
+    // 2. Get the advance width of c1 when followed by c2
+    int widthInPair = GetAdvanceWidth(pair, 2);
+
+    // 3. Get the nominal advance width of c1 in isolation
+    int widthIsolated = GetAdvanceWidth(&c1, 1);
+
+#if GDI_LOGGING
+    if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
+        fprintf(log, "GdiProportionalizer::GetKerningAdjustment B: widthInPair: %d, widthIsolated: %d\n", widthInPair, widthIsolated);
+        fclose(log);
+    }
+#endif
+
+    // The kerning value is the difference
+    return widthInPair - widthIsolated;
+#else
+    int wPair = GetStringAdvance(hdc, psc, pair, 2);
+    int w1 = GetStringAdvance(hdc, psc, &c1, 1);
+    int w2 = GetStringAdvance(hdc, psc, &c2, 1);
+
+#if GDI_LOGGING
+    if (fopen_s(&log, "winmm_dll_log.txt", "at") == 0 && log) {
+        fprintf(log, "GdiProportionalizer::GetKerningAdjustment B: wPair: %d, w1: %d, w2: %d\n", wPair, w1, w2);
+        fclose(log);
+    }
+#endif
+
+    return -abs(wPair - (w1 + w2));
+#endif
+}
+
 DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuFormat, LPGLYPHMETRICS lpgm, DWORD cjBuffer, LPVOID pvBuffer, MAT2* lpmat2)
 {
     string sjisStr;
@@ -544,8 +666,14 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
     }
     UINT nextCharUnicode = SJISCharToUnicode(nextCharStr, true);
 
+#if 0
     uint32_t kernKey = static_cast<uint32_t>(ch) | (static_cast<uint32_t>(nextCharUnicode) << 16);
     int kern = kernAmounts[kernKey];
+#else
+    SCRIPT_CACHE sc = NULL; // Must be initialized to NULL
+    int kern = GetKerningAdjustment(hdc, &sc, ch, nextCharUnicode);
+    ScriptFreeCache(&sc);
+#endif
 
     ABCFLOAT abc;
     GetCharABCWidthsFloatW(hdc, ch, ch, &abc);
