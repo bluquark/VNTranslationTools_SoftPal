@@ -153,6 +153,14 @@ namespace VNTextPatch.Shared.Scripts.Softpal
             foreach (TextOperand operand in _textOperands)
             {
                 iteration++;
+                
+                /*
+                if (iteration is >= 6895 and <= 6930 or >= 70650 and <= 70660)
+                {
+                    Console.WriteLine($"Debugging iteration: {iteration} offset: {operand.Offset:X} type: {operand.Type} "
+                        + $"text: {stringEnumerator.Current.Text}");
+                }*/
+                
 
                 if (stringStack.Count > 0)
                 {
@@ -162,12 +170,28 @@ namespace VNTextPatch.Shared.Scripts.Softpal
                     continue;
                 }
 
+                // When the operand is a LogCharacterName, we can mostly-safely assume this is the beginning of a split-message pattern like:
+                // LogCharacterName: "Greg"
+                // LogMessage: "Oh... no!!"
+                // CharacterName: "Greg"
+                // Message: "Oh... "
+                // CharacterName: "Greg"
+                // Message: "no!!"
+                // 
+                // Ingame, this simply appears as a normal-looking textbox with the first half ("Oh... ") appearing more slowly than the second.
+                //
+                // So here we reconstitute the LogMessage from the split message, and also use it for linebreaking.
                 if (operand.Type == ScriptStringType.LogCharacterName)
                 {
-                    // Some anomalies happen after this offset, debug later
-                    if (iteration >= 47744)
+                    // In these ranges, it's actually not a split message, but a non-present character voicing text from an image of a letter.
+                    // There is no textbox onscreen at all, but the text still appears in the log. So the pattern is:
+                    // LogCharacterName: "Susie"
+                    // LogMessage: "Dear Greg..."
+                    if (iteration is (>= 47744 and <= 47800) or (>= 56420 and <= 56500))
                     {
-                        WriteAndPatch("TODO", operand.Offset);
+                        // TODO
+                        WriteAndPatch("Letter writer", operand.Offset);
+                        stringStack.Add("Letter text");
                         continue;
                     }
 
@@ -211,13 +235,16 @@ namespace VNTextPatch.Shared.Scripts.Softpal
                     continue;
                 }
 
+                // There are two loose LogMessages at offsets B3360 and 44ACA8, followed by an identical Message for some reason
                 if (operand.Type == ScriptStringType.LogMessage)
-                {
-                    WriteAndPatch("TODO", operand.Offset);
+                {       
+                    // throw new InvalidDataException
+                    //Console.WriteLine($"Unexpected LogMessage line at {iteration} offset: {operand.Offset:X} type: {operand.Type} "
+                    //    + $"text: {stringEnumerator.Current.Text}");
 
+                    WriteAndPatch("TODO", operand.Offset);
                     continue;
                 }
-
 
                 if (!stringEnumerator.MoveNext())
                     throw new InvalidDataException("Not enough lines in translation");
