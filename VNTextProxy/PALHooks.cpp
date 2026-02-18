@@ -43,6 +43,54 @@ static const IID IID_ISampleGrabberCB = { 0x0579154A, 0x2B53, 0x4994, { 0xB0, 0x
 
 #define dbg_log(...) proxy_log(LogCategory::HOOKS, __VA_ARGS__)
 
+namespace PALFontTypeOverride
+{
+    // PalFontSetType(int type) -> int (returns 1 on success, 0 on failure)
+    // When font type == 4, PAL.dll uses a built-in bitmap font renderer that bypasses GDI entirely.
+    // We intercept this and force type 1 (GDI-based rendering) so our font substitution hooks work.
+    static int (__cdecl* oPalFontSetType)(int type) = nullptr;
+
+    static int __cdecl PalFontSetType_Hook(int type)
+    {
+        if (type == 4)
+        {
+            dbg_log("PALFontTypeOverride: intercepted PalFontSetType(%d) -> redirecting to type 1", type);
+            type = 1;
+        }
+        else
+        {
+            dbg_log("PALFontTypeOverride: PalFontSetType(%d)", type);
+        }
+        return oPalFontSetType(type);
+    }
+
+    bool Install(HMODULE hPalDll)
+    {
+        oPalFontSetType = (decltype(oPalFontSetType))GetProcAddress(hPalDll, "PalFontSetType");
+        if (!oPalFontSetType)
+        {
+            dbg_log("PALFontTypeOverride: PalFontSetType not found in PAL.dll");
+            return false;
+        }
+
+        dbg_log("PALFontTypeOverride: PalFontSetType at 0x%p", oPalFontSetType);
+
+        DetourTransactionBegin();
+        DetourUpdateThread(GetCurrentThread());
+        DetourAttach(&(PVOID&)oPalFontSetType, (PVOID)PalFontSetType_Hook);
+        LONG err = DetourTransactionCommit();
+
+        if (err == NO_ERROR)
+        {
+            dbg_log("PALFontTypeOverride: Hook installed successfully");
+            return true;
+        }
+
+        dbg_log("PALFontTypeOverride: DetourAttach failed, error=%d", err);
+        return false;
+    }
+}
+
 namespace PALGrabCurrentText
 {
     static void* (__cdecl* oPalTaskGetData)() = nullptr;
@@ -101,6 +149,13 @@ namespace PALGrabCurrentText
             return false;
         }
         dbg_log("PalGrabCurrentText::Install: PAL.dll loaded at 0x%p", hMod);
+
+        // PAL.dll is the one that calls GDI font functions (CreateFontA, SelectObject, GetGlyphOutlineA).
+        // Patch its IAT so our font substitution hooks take effect.
+        ImportHooker::ApplyToModule(hMod);
+
+        // Hook PalFontSetType to prevent bitmap font mode (type 4) which bypasses GDI.
+        PALFontTypeOverride::Install(hMod);
 
         oPalTaskGetData = (decltype(oPalTaskGetData))GetProcAddress(hMod, "PalTaskGetTaskData");
         if (oPalTaskGetData)

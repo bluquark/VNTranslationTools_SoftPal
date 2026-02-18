@@ -9,7 +9,7 @@ Font::Font(const LOGFONTW& info)
     _gdiHandle = CreateFontIndirectW(&info);
     _pDWriteTextFormat = nullptr;
 
-    SelectObject(_dc, _gdiHandle);
+    GdiProportionalizer::OrigSelectObject(_dc, _gdiHandle);
 
     DWORD numKernings = GetKerningPairsW(_dc, 0, nullptr);
     vector<KERNINGPAIR> kernings(numKernings);
@@ -30,7 +30,7 @@ Font::~Font()
         _pDWriteTextFormat = nullptr;
     }
 
-    DeleteObject(_gdiHandle);
+    GdiProportionalizer::OrigDeleteObject(_gdiHandle);
     _gdiHandle = nullptr;
 
     DeleteDC(_dc);

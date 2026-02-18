@@ -17,6 +17,10 @@
 
 using namespace std;
 
+// File-scope trampoline pointers for functions whose originals are only needed in this file
+static decltype(&::CreateFontA) OrigCreateFontA = &::CreateFontA;
+static decltype(&::GetGlyphOutlineA) OrigGetGlyphOutlineA = &::GetGlyphOutlineA;
+
 /*
 SoftPal uses GDI methods only to create the font and to compute the metrics and bitmap of one character at a time.
 Then on its end (and beyond our control here), it adds a black outline around the bitmap and prints it onscreen itself.
@@ -106,6 +110,17 @@ void GdiProportionalizer::Init()
             { "GetGlyphOutlineA", GetGlyphOutlineAHook }
         }
     );
+
+    // Also hook via DetourAttach on the actual GDI function bodies.
+    // This catches callers that bypass the IAT (e.g. PAL.dll in Yureaka).
+    DetourTransactionBegin();
+    DetourUpdateThread(GetCurrentThread());
+    DetourAttach(&(PVOID&)OrigCreateFontA, (PVOID)CreateFontAHook);
+    DetourAttach(&(PVOID&)OrigSelectObject, (PVOID)SelectObjectHook);
+    DetourAttach(&(PVOID&)OrigDeleteObject, (PVOID)DeleteObjectHook);
+    DetourAttach(&(PVOID&)OrigGetGlyphOutlineA, (PVOID)GetGlyphOutlineAHook);
+    LONG err = DetourTransactionCommit();
+    proxy_log(LogCategory::TEXT, "GdiProportionalizer: DetourAttach on GDI functions result=%d", err);
 }
 
 int GdiProportionalizer::EnumFontsAHook(HDC hdc, LPCSTR lpLogfont, FONTENUMPROCA lpProc, LPARAM lParam)
@@ -284,7 +299,7 @@ HGDIOBJ GdiProportionalizer::SelectObjectHook(HDC hdc, HGDIOBJ obj)
     if (pFont != nullptr)
         CurrentFonts[hdc] = pFont;
 
-    HGDIOBJ ret = SelectObject(hdc, obj);
+    HGDIOBJ ret = OrigSelectObject(hdc, obj);
 
 #if LEGACY_KERNING
     DWORD count = GetKerningPairsW(hdc, 0, nullptr);
@@ -330,7 +345,7 @@ BOOL GdiProportionalizer::DeleteObjectHook(HGDIOBJ obj)
     if (pFont != nullptr)
         return false;
 
-    return DeleteObject(obj);
+    return OrigDeleteObject(obj);
 }
 
 BOOL GdiProportionalizer::GetTextExtentPointAHook(HDC hdc, LPCSTR lpString, int c, LPSIZE lpsz)
@@ -565,7 +580,7 @@ void GdiProportionalizer::ApplyFontState(HDC hdc)
         } else if (!CustomFontName.empty()) {
             pFont = FontManager.FetchFont(CustomFontName, pFont->GetHeight(), Bold, Italic, Underline);
         }
-        SelectObject(hdc, pFont->GetGdiHandle());
+        OrigSelectObject(hdc, pFont->GetGdiHandle());
     }
 }
 
@@ -708,7 +723,7 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
             Font* pFont = CurrentFonts[hdc];
             if (pFont != nullptr) {
                 Font* segoeUI = FontManager.FetchFont(L"Segoe UI Symbol", pFont->GetHeight(), false, false, false);
-                SelectObject(hdc, segoeUI->GetGdiHandle());
+                OrigSelectObject(hdc, segoeUI->GetGdiHandle());
             }
         }
     }

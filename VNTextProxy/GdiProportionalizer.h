@@ -5,6 +5,12 @@ class GdiProportionalizer : public Proportionalizer
 public:
     static void Init();
 
+    // Trampoline pointers to the REAL GDI functions (after DetourAttach).
+    // Use these instead of calling SelectObject/DeleteObject directly
+    // to avoid recursion through our Detour hooks.
+    static inline decltype(&::SelectObject) OrigSelectObject = &::SelectObject;
+    static inline decltype(&::DeleteObject) OrigDeleteObject = &::DeleteObject;
+
 private:
     static int __stdcall EnumFontsAHook(HDC hdc, LPCSTR lpLogfont, FONTENUMPROCA lpProc, LPARAM lParam);
     static int __stdcall EnumFontFamiliesExAHook(HDC hdc, LPLOGFONTA lpLogfont, FONTENUMPROCA lpProc, LPARAM lParam, DWORD dwFlags);
