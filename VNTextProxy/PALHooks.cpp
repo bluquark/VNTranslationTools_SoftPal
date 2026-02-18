@@ -93,7 +93,9 @@ namespace PALFontTypeOverride
 
 namespace PALGrabCurrentText
 {
-    static void* (__cdecl* oPalTaskGetData)() = nullptr;
+    // Newer SoftPAL PalTaskGetTaskData takes one argument (pass NULL to use default task).
+    // Older SoftPAL takes no arguments but is __cdecl, so passing an extra arg is harmless.
+    static void* (__cdecl* oPalTaskGetData)(void*) = nullptr;
     static int textOffset = 0x204;
 
     // Separate function for SEH - can't mix __try/__except with C++ objects
@@ -101,7 +103,7 @@ namespace PALGrabCurrentText
     {
         __try
         {
-            return oPalTaskGetData();
+            return oPalTaskGetData(nullptr);
         }
         __except (EXCEPTION_EXECUTE_HANDLER)
         {
@@ -160,8 +162,16 @@ namespace PALGrabCurrentText
         oPalTaskGetData = (decltype(oPalTaskGetData))GetProcAddress(hMod, "PalTaskGetTaskData");
         if (oPalTaskGetData)
         {
-            textOffset = 0x204;
-            dbg_log("PalGrabCurrentText::Install: using PalTaskGetTaskData at 0x%p, offset 0x%x", oPalTaskGetData, textOffset);
+            // Detect which version of PalTaskGetTaskData we have:
+            // Old SoftPAL: starts with A1 (mov eax, [addr]) - no frame, no args, text at 0x204
+            // New SoftPAL: starts with 55 (push ebp) - has frame, takes 1 arg, text at 0x1544
+            unsigned char firstByte = *(unsigned char*)oPalTaskGetData;
+            if (firstByte == 0x55) // push ebp - Yureaka style
+                textOffset = 0x1544;
+            else
+                textOffset = 0x204;
+            dbg_log("PalGrabCurrentText::Install: using PalTaskGetTaskData at 0x%p, firstByte=0x%02x, offset 0x%x",
+                oPalTaskGetData, firstByte, textOffset);
         }
         else
         {
