@@ -777,6 +777,18 @@ BOOL Win32AToWAdapter::EnumDisplaySettingsAHook(LPCSTR lpszDeviceName, DWORD iMo
 
 LONG Win32AToWAdapter::ChangeDisplaySettingsAHook(DEVMODEA* lpDevMode, DWORD dwFlags)
 {
+    // Auto-detect widescreen: if game requests a widescreen resolution, override to raw mode
+    if (RuntimeConfig::PillarboxedFullscreen() && lpDevMode != nullptr && lpDevMode->dmPelsHeight > 0)
+    {
+        float requestedAspect = (float)lpDevMode->dmPelsWidth / (float)lpDevMode->dmPelsHeight;
+        if (requestedAspect >= 1.5f)
+        {
+            winapi_log("ChangeDisplaySettingsA: %dx%d - widescreen (%.2f:1), overriding to raw mode",
+                lpDevMode->dmPelsWidth, lpDevMode->dmPelsHeight, requestedAspect);
+            RuntimeConfig::OverrideToRaw();
+        }
+    }
+
     // If pillarboxedFullscreen is disabled, pass through to original function
     if (!RuntimeConfig::PillarboxedFullscreen())
     {
@@ -815,6 +827,18 @@ LONG Win32AToWAdapter::ChangeDisplaySettingsAHook(DEVMODEA* lpDevMode, DWORD dwF
 
 LONG Win32AToWAdapter::ChangeDisplaySettingsExAHook(LPCSTR lpszDeviceName, DEVMODEA* lpDevMode, HWND hwnd, DWORD dwflags, LPVOID lParam)
 {
+    // Auto-detect widescreen: if game requests a widescreen resolution, override to raw mode
+    if (RuntimeConfig::PillarboxedFullscreen() && lpDevMode != nullptr && lpDevMode->dmPelsHeight > 0)
+    {
+        float requestedAspect = (float)lpDevMode->dmPelsWidth / (float)lpDevMode->dmPelsHeight;
+        if (requestedAspect >= 1.5f)
+        {
+            winapi_log("ChangeDisplaySettingsExA: %dx%d - widescreen (%.2f:1), overriding to raw mode",
+                lpDevMode->dmPelsWidth, lpDevMode->dmPelsHeight, requestedAspect);
+            RuntimeConfig::OverrideToRaw();
+        }
+    }
+
     // If pillarboxedFullscreen is disabled, pass through to original function
     if (!RuntimeConfig::PillarboxedFullscreen())
     {

@@ -122,6 +122,14 @@ bool RuntimeConfig::DebugLogging() { return _debugLogging; }
 bool RuntimeConfig::EnableFontSubstitution() { return _enableFontSubstitution; }
 bool RuntimeConfig::PillarboxedFullscreen() { return _pillarboxedFullscreen; }
 bool RuntimeConfig::DirectX11Upscaling() { return _directX11Upscaling; }
+void RuntimeConfig::OverrideToRaw()
+{
+    if (!_pillarboxedFullscreen)
+        return;
+    _pillarboxedFullscreen = false;
+    _directX11Upscaling = false;
+    proxy_log(LogCategory::HOOKS, "RuntimeConfig: Widescreen game detected - auto-overriding to raw mode");
+}
 const std::wstring& RuntimeConfig::CustomFontFilename() { return _customFontFilename; }
 const std::wstring& RuntimeConfig::MonospaceFontFilename() { return _monospaceFontFilename; }
 int RuntimeConfig::FontHeightIncrease() { return _fontHeightIncrease; }

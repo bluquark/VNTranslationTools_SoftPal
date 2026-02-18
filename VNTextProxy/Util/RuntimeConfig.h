@@ -15,6 +15,7 @@ public:
     static bool EnableFontSubstitution();
     static bool PillarboxedFullscreen();
     static bool DirectX11Upscaling();
+    static void OverrideToRaw();
     static const std::wstring& CustomFontFilename();
     static const std::wstring& MonospaceFontFilename();
     static int FontHeightIncrease();

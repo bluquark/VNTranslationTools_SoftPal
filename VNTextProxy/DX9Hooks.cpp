@@ -175,6 +175,27 @@ namespace DX9Hooks
         bool requestingFullscreen = (pPresentationParameters && !pPresentationParameters->Windowed);
         bool requestingWindowed = (pPresentationParameters && pPresentationParameters->Windowed && PillarboxedState::g_pillarboxedActive);
 
+        // Auto-detect widescreen: if game resolution is widescreen, override to raw mode
+        // Check game resolution from SetViewport (already captured before first Reset)
+        if (RuntimeConfig::PillarboxedFullscreen() && PillarboxedState::g_gameHeight > 0)
+        {
+            float aspect = (float)PillarboxedState::g_gameWidth / (float)PillarboxedState::g_gameHeight;
+            if (aspect >= 1.5f)
+            {
+                dbg_log("  Widescreen game resolution detected (%dx%d, %.2f:1), overriding to raw mode",
+                    PillarboxedState::g_gameWidth, PillarboxedState::g_gameHeight, aspect);
+                RuntimeConfig::OverrideToRaw();
+            }
+        }
+
+        // If pillarboxed mode was disabled (originally or via widescreen override), pass through
+        if (!RuntimeConfig::PillarboxedFullscreen())
+        {
+            HRESULT hr = oReset(pThis, pPresentationParameters);
+            dbg_log("  Reset (raw passthrough) returned 0x%x", hr);
+            return hr;
+        }
+
         if (requestingFullscreen)
         {
             dbg_log("  [Pillarboxed] Intercepting fullscreen request");
