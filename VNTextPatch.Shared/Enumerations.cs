@@ -6,6 +6,8 @@
         Message,
         LogCharacterName,
         LogMessage,
+        SplitCharacterName,
+        SplitMessage,
         Internal
     }
 

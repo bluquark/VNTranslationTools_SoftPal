@@ -96,7 +96,15 @@ namespace VNTextPatch.Shared.Scripts.Softpal
                 textStream.Position = addr + 4;
                 string text = textReader.ReadZeroTerminatedSjisString();
 //                text = text.Replace("<br>", "\r\n");
-                yield return new ScriptString(text, operand.Type);
+
+                // Map split types to base types for xlsx compatibility
+                ScriptStringType yieldType = operand.Type;
+                if (yieldType == ScriptStringType.SplitCharacterName)
+                    yieldType = ScriptStringType.CharacterName;
+                else if (yieldType == ScriptStringType.SplitMessage)
+                    yieldType = ScriptStringType.Message;
+
+                yield return new ScriptString(text, yieldType);
             }
         }
 
@@ -208,10 +216,11 @@ namespace VNTextPatch.Shared.Scripts.Softpal
             int iteration = 0;
             List<string> stringStack = new List<string>();
             using IEnumerator<ScriptString> stringEnumerator = strings.GetEnumerator();
-            foreach (TextOperand operand in _textOperands)
+            for (int operandIdx = 0; operandIdx < _textOperands.Count; operandIdx++)
             {
+                TextOperand operand = _textOperands[operandIdx];
                 iteration++;
-                
+
                 /*
                 if (RuntimeConfig.DebugLogging && iteration is >= 6895 and <= 6930 or >= 70650 and <= 70660)
                 {
@@ -228,31 +237,35 @@ namespace VNTextPatch.Shared.Scripts.Softpal
                     continue;
                 }
 
-                // When the operand is a LogCharacterName, we can mostly-safely assume this is the beginning of a split-message pattern like:
-                // LogCharacterName: "Greg"
-                // LogMessage: "Oh... no!!"
-                // CharacterName: "Greg"
-                // Message: "Oh... "
-                // CharacterName: "Greg"
-                // Message: "no!!"
-                // 
-                // Ingame, this simply appears as a normal-looking textbox with the first half ("Oh... ") appearing more slowly than the second.
+                // LogCharacterName + LogMessage come from the merged-log instruction (syscall 0x20014).
+                // For split messages, these are followed by SplitCharacterName/SplitMessage operands.
+                // For letters (non-present character voicing text from an image), they are NOT followed
+                // by split operands — just regular messages.
                 //
-                // So here we reconstitute the LogMessage from the split message, and also use it for linebreaking.
+                // We detect the split case by peeking ahead: if operand[i+2] is SplitCharacterName,
+                // this is a split-message pattern:
+                //   LogCharacterName, LogMessage, SplitCharacterName, SplitMessage, SplitCharacterName, SplitMessage
+                //
+                // Ingame, a split message appears as a normal-looking textbox with the first half
+                // appearing more slowly than the second.
                 if (operand.Type == ScriptStringType.LogCharacterName)
                 {
-                    // In these ranges, it's actually not a split message, but a non-present character voicing text from an image of a letter.
-                    // There is no textbox onscreen at all, but the text still appears in the log. So the pattern is:
-                    // LogCharacterName: "Susie"
-                    // LogMessage: "Dear Greg..."
-                    if (iteration is (>= 47744 and <= 47800) or (>= 56420 and <= 56500))
+                    bool isSplit = operandIdx + 2 < _textOperands.Count
+                        && _textOperands[operandIdx + 2].Type == ScriptStringType.SplitCharacterName;
+
+                    if (!isSplit)
                     {
+                        // Letter: non-present character voicing text from an image of a letter.
+                        // There is no textbox onscreen at all, but the text still appears in the log.
+                        // Pattern: LogCharacterName + LogMessage only.
                         // TODO
                         WriteAndPatch("Letter writer", operand.Offset);
                         stringStack.Add("Letter text");
                         continue;
                     }
 
+                    // Split message: reconstitute LogMessage from the two split parts,
+                    // and use it for linebreaking.
                     stringEnumerator.MoveNext();
                     string name1 = SoftpalizeText(stringEnumerator.Current.Text);
                     stringEnumerator.MoveNext();
@@ -274,15 +287,6 @@ namespace VNTextPatch.Shared.Scripts.Softpal
                     message1 = logString.Substring(0, firstMessageLength);
                     message2 = logString.Substring(firstMessageLength);
 
-                    /*
-                    if (RuntimeConfig.DebugLogging && (logString.StartsWith("\"Hey,|don't|go|getting|surprised")
-                        || logString.StartsWith("\"Breakfast|is|the|most|important")))
-                    {
-                        Console.WriteLine("Merged split line at " + iteration + ": LogString: " + logString
-                            + " message1: " + message1 + "message2: " + message2);
-                    }
-                    */
-
                     WriteAndPatch(name1, operand.Offset);
                     stringStack.Add(logString);
                     stringStack.Add(name1);
@@ -296,11 +300,6 @@ namespace VNTextPatch.Shared.Scripts.Softpal
                 // There are two loose LogMessages at offsets B3360 and 44ACA8, followed by an identical Message for some reason
                 if (operand.Type == ScriptStringType.LogMessage)
                 {
-                    /*
-                    if (RuntimeConfig.DebugLogging) Console.WriteLine($"Unexpected LogMessage line at {iteration} offset: {operand.Offset:X} type: {operand.Type} "
-                        + $"text: {stringEnumerator.Current.Text}");
-                    */
-
                     WriteAndPatch("TODO", operand.Offset);
                     continue;
                 }
@@ -308,10 +307,19 @@ namespace VNTextPatch.Shared.Scripts.Softpal
                 if (!stringEnumerator.MoveNext())
                     throw new InvalidDataException("Not enough lines in translation");
 
-                if (stringEnumerator.Current.Type != operand.Type)
+                // SplitCharacterName/SplitMessage operands are served from stringStack (pushed
+                // by the split handler above), so they never reach this type check. But if one
+                // somehow does, accept the base type from the xlsx enumerator.
+                ScriptStringType expectedType = operand.Type;
+                if (expectedType == ScriptStringType.SplitCharacterName)
+                    expectedType = ScriptStringType.CharacterName;
+                else if (expectedType == ScriptStringType.SplitMessage)
+                    expectedType = ScriptStringType.Message;
+
+                if (stringEnumerator.Current.Type != expectedType)
                     throw new InvalidDataException(
     $"String type mismatch at iteration #{iteration} " +
-    $"(operand offset 0x{operand.Offset:X}): expected {operand.Type}, got {stringEnumerator.Current.Type}, text={stringEnumerator.Current.Text}");
+    $"(operand offset 0x{operand.Offset:X}): expected {expectedType}, got {stringEnumerator.Current.Type}, text={stringEnumerator.Current.Text}");
 
                 string text = stringEnumerator.Current.Text;
                 text = SoftpalizeText(text);

@@ -52,11 +52,11 @@ namespace VNTextPatch.Shared.Scripts.Softpal
 
                 if (IsMessageInstruction(instr))
                 {
-                    HandleMessageInstruction(false);
+                    HandleMessageInstruction(false, instr);
                 }
                 else if (IsMergedLogInstruction(instr))
                 {
-                    HandleMessageInstruction(true);
+                    HandleMessageInstruction(true, instr);
                 }
                 else if (_opcodeHandlers.TryGetValue(instr.Opcode, out Action<Instruction> handler))
                 {
@@ -226,7 +226,7 @@ namespace VNTextPatch.Shared.Scripts.Softpal
             }
         }
 
-        private void HandleMessageInstruction(bool logOnly)
+        private void HandleMessageInstruction(bool logOnly, Instruction instr)
         {
             try
             {
@@ -246,11 +246,35 @@ namespace VNTextPatch.Shared.Scripts.Softpal
                 if (name.Type != OperandType.Literal || message.Type != OperandType.Literal)
                     return;
 
+                // Syscall opcodes 0x20012 and 0x20013 are exclusively used for split-textbox
+                // message parts (part 1 and part 2 respectively). They always follow a merged
+                // log instruction (0x20014). Regular messages use other opcodes (0x20002, etc).
+                bool isSplitPart = !logOnly
+                    && instr.Opcode == SoftpalOpcodes.Syscall
+                    && (instr.Operands[0].RawValue == 0x20012 || instr.Operands[0].RawValue == 0x20013);
+
+                ScriptStringType nameType, messageType;
+                if (logOnly)
+                {
+                    nameType = ScriptStringType.LogCharacterName;
+                    messageType = ScriptStringType.LogMessage;
+                }
+                else if (isSplitPart)
+                {
+                    nameType = ScriptStringType.SplitCharacterName;
+                    messageType = ScriptStringType.SplitMessage;
+                }
+                else
+                {
+                    nameType = ScriptStringType.CharacterName;
+                    messageType = ScriptStringType.Message;
+                }
+
                 if (name.Value >= 0)
-                    TextAddressEncountered?.Invoke(name.Offset, logOnly ? ScriptStringType.LogCharacterName : ScriptStringType.CharacterName);
+                    TextAddressEncountered?.Invoke(name.Offset, nameType);
 
                 if (message.Value >= 0)
-                    TextAddressEncountered?.Invoke(message.Offset, logOnly ? ScriptStringType.LogMessage : ScriptStringType.Message);
+                    TextAddressEncountered?.Invoke(message.Offset, messageType);
             }
             finally
             {
