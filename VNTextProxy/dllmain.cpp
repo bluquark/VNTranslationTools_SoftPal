@@ -4,6 +4,7 @@
 #include "PALHooks.h"
 #include "DX9Hooks.h"
 #include "DX11Hooks.h"
+#include "Util/Logger.h"
 #include <sstream>
 
 void* OriginalEntryPoint;
@@ -70,7 +71,8 @@ void Initialize()
     if (RuntimeConfig::EnableFontSubstitution()) {
         CheckRequiredDataFiles();
         GdiProportionalizer::Init();
-        PALGrabCurrentText::Install();
+        if (!PALGrabCurrentText::Install())
+            proxy_log(LogCategory::HOOKS, "WARNING: PALGrabCurrentText::Install failed - text grab will be unavailable");
     }
 
     EnginePatches::Init();

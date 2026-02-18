@@ -54,7 +54,20 @@ static std::unordered_map<uint32_t, int> kernAmounts;
 static int currentTextOffset = 0;
 static int totalAdvOut = 0;
 
-// Check if text contains full-width Japanese characters (Hiragana, Katakana, CJK)
+// Check if a single character is a full-width Japanese/CJK character
+static bool IsJapaneseCharacter(UINT ch)
+{
+    return (ch >= 0x3040 && ch <= 0x309F) ||  // Hiragana
+           (ch >= 0x30A0 && ch <= 0x30FF) ||  // Katakana
+           (ch >= 0x4E00 && ch <= 0x9FFF) ||  // CJK Unified Ideographs
+           (ch >= 0x3400 && ch <= 0x4DBF) ||  // CJK Extension A
+           (ch >= 0x3000 && ch <= 0x303F) ||  // CJK Symbols and Punctuation
+           (ch >= 0xFF00 && ch <= 0xFFEF);    // Fullwidth Forms
+}
+
+// Check if text contains Japanese script characters (Hiragana, Katakana, CJK ideographs).
+// Intentionally excludes CJK punctuation and fullwidth forms since those can appear in
+// translated English text and should not trigger a switch to the Japanese font.
 static bool ContainsJapaneseCharacters(const wchar_t* text)
 {
     if (text == nullptr)
@@ -63,17 +76,11 @@ static bool ContainsJapaneseCharacters(const wchar_t* text)
     for (const wchar_t* p = text; *p != L'\0'; ++p)
     {
         wchar_t ch = *p;
-        // Hiragana: U+3040-U+309F
-        // Katakana: U+30A0-U+30FF
-        // CJK Unified Ideographs: U+4E00-U+9FFF
-        // CJK Extension A: U+3400-U+4DBF
         if ((ch >= 0x3040 && ch <= 0x309F) ||  // Hiragana
             (ch >= 0x30A0 && ch <= 0x30FF) ||  // Katakana
             (ch >= 0x4E00 && ch <= 0x9FFF) ||  // CJK Unified Ideographs
             (ch >= 0x3400 && ch <= 0x4DBF))    // CJK Extension A
-        {
             return true;
-        }
     }
     return false;
 }
@@ -247,11 +254,16 @@ HFONT GdiProportionalizer::CreateFontIndirectWHook(LOGFONTW* pFontInfo)
     proxy_log(LogCategory::TEXT, "GdiProportionalizer::CreateFontIndirectWHook(): CustomFontName: %ls, height: %d",
         CustomFontName.c_str(), height);
 
-    return FontManager.FetchFont(CustomFontName, height, Bold, Italic, Underline)->GetGdiHandle();
+    Font* pFont = FontManager.FetchFont(CustomFontName, height, Bold, Italic, Underline);
+    proxy_log(LogCategory::TEXT, "GdiProportionalizer::CreateFontIndirectWHook(): FetchFont returned 0x%p", pFont);
+    HFONT hFont = pFont->GetGdiHandle();
+    proxy_log(LogCategory::TEXT, "GdiProportionalizer::CreateFontIndirectWHook(): returning HFONT 0x%p", hFont);
+    return hFont;
 }
 
 HGDIOBJ GdiProportionalizer::SelectObjectHook(HDC hdc, HGDIOBJ obj)
 {
+    proxy_log(LogCategory::TEXT, "GdiProportionalizer::SelectObjectHook() ENTER: hdc=0x%p, obj=0x%p", hdc, obj);
     const unsigned char* currentText = PALGrabCurrentText::get();
     proxy_log(LogCategory::TEXT, "GdiProportionalizer::SelectObjectHook(): currentText: %s", currentText);
 
@@ -559,6 +571,8 @@ void GdiProportionalizer::ApplyFontState(HDC hdc)
 
 DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuFormat, LPGLYPHMETRICS lpgm, DWORD cjBuffer, LPVOID pvBuffer, MAT2* lpmat2)
 {
+    proxy_log(LogCategory::TEXT, "GdiProportionalizer::GetGlyphOutlineAHook() ENTER: uChar=0x%x, fuFormat=0x%x", uChar, fuFormat);
+
     string sjisStr;
     while (uChar != 0)
     {
@@ -568,8 +582,10 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
     UINT ch = SJISCharToUnicode(sjisStr, false);
 
     // Process control codes at the very beginning of text (before first character is rendered)
-    if (currentTextOffset == 0) {
-        const unsigned char* textString = PALGrabCurrentText::get();
+    const unsigned char* textString = PALGrabCurrentText::get();
+    bool hasTextGrab = (textString != nullptr);
+
+    if (currentTextOffset == 0 && hasTextGrab) {
         const unsigned char* scanPos = textString;
         bool fontChanged = false;
 
@@ -605,50 +621,46 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
         }
     }
 
-    const unsigned char* textString = PALGrabCurrentText::get();
-    const unsigned char* currentChar = textString + currentTextOffset;
-    int sjisCharLength = sjis_next_char(currentChar) - currentChar;
+    // Calculate advance width using ABC widths (works without text grab)
+    int kern = 0;
 
-    // TODO: support skipping control codes here (for the rare situation where control code is between two characters with nonzero kerning relationship)
-    const unsigned char* nextChar = currentChar + sjisCharLength;
-    int sjisNextCharLength = sjis_next_char(nextChar) - nextChar;
-    string nextCharStr;
-    while (sjisNextCharLength > 0) {
-        nextCharStr.insert(0, 1, *nextChar);
-        nextChar++;
-        sjisNextCharLength--;
-    }
-    UINT nextCharUnicode = SJISCharToUnicode(nextCharStr, true);
+    if (hasTextGrab) {
+        const unsigned char* currentChar = textString + currentTextOffset;
+        int sjisCharLength = sjis_next_char(currentChar) - currentChar;
+
+        // TODO: support skipping control codes here (for the rare situation where control code is between two characters with nonzero kerning relationship)
+        const unsigned char* nextChar = currentChar + sjisCharLength;
+        int sjisNextCharLength = sjis_next_char(nextChar) - nextChar;
+        string nextCharStr;
+        while (sjisNextCharLength > 0) {
+            nextCharStr.insert(0, 1, *nextChar);
+            nextChar++;
+            sjisNextCharLength--;
+        }
+        UINT nextCharUnicode = SJISCharToUnicode(nextCharStr, true);
 
 #if LEGACY_KERNING
-    uint32_t kernKey = static_cast<uint32_t>(ch) | (static_cast<uint32_t>(nextCharUnicode) << 16);
-    int kern = kernAmounts[kernKey];
+        uint32_t kernKey = static_cast<uint32_t>(ch) | (static_cast<uint32_t>(nextCharUnicode) << 16);
+        kern = kernAmounts[kernKey];
 #else
-    SCRIPT_CACHE sc = NULL; // Must be initialized to NULL
-    int kern = GetKerningAdjustment(hdc, &sc, ch, nextCharUnicode);
-    ScriptFreeCache(&sc);
+        SCRIPT_CACHE sc = NULL; // Must be initialized to NULL
+        kern = GetKerningAdjustment(hdc, &sc, ch, nextCharUnicode);
+        ScriptFreeCache(&sc);
 #endif
+    }
 
     ABCFLOAT abc;
     GetCharABCWidthsFloatW(hdc, ch, ch, &abc);
     double advanceF = abc.abcfA + abc.abcfB + abc.abcfC + kern;
     int advOut = (int)floor(advanceF + 0.5);
-    
 
-    proxy_log(LogCategory::TEXT, "GdiProportionalizer::GetGlyphOutlineAHook() codepage: %d, fuFormat: %s, sjisChar: %s, currentText char: %c, Unicode 0x%x, nextChar: %c, pvBuffer: %d, cjBuffer: %d, metricsResult: %s, advOut: %d, "
-        "totalAdvOut: %d, a: %f, b: %f, c: %f, kern: %d",
-        GetACP(),
-        FuFormatToString(fuFormat).c_str(),
-        reinterpret_cast<const char*>(sjisStr.c_str()),
-        *currentChar,
-        ch,
-        (char) nextCharUnicode,
-        pvBuffer != NULL,
-        cjBuffer,
-        GlyphMetricsToString(lpgm).c_str(),
-        advOut, totalAdvOut, abc.abcfA, abc.abcfB, abc.abcfC, kern);
+    proxy_log(LogCategory::TEXT, "GdiProportionalizer::GetGlyphOutlineAHook() Unicode 0x%x, pvBuffer: %d, advOut: %d, hasTextGrab: %d, a: %f, b: %f, c: %f, kern: %d",
+        ch, pvBuffer != NULL, advOut, hasTextGrab ? 1 : 0, abc.abcfA, abc.abcfB, abc.abcfC, kern);
 
-    if (pvBuffer) {
+    if (pvBuffer && hasTextGrab) {
+        const unsigned char* currentChar = textString + currentTextOffset;
+        int sjisCharLength = sjis_next_char(currentChar) - currentChar;
+
         bool fontChanged = false;
         currentTextOffset += sjisCharLength;
         currentChar += sjisCharLength;
