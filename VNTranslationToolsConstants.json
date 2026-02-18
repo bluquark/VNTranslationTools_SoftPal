@@ -1,6 +1,6 @@
 {
   // *** VNTextProxy-only settings (winmm.dll)
-  "debugLogging": true,
+  "debugLogging": false,
   // enableFontSubstitution is a global switch to enable/disable all text proxying code in VNTextProxy
   // It should be true if the data files contains English-translated script, false if they contain original Japanese script.
   "enableFontSubstitution": true,
@@ -9,8 +9,8 @@
   // Number of pixels to raise all text upward in the textbox.
   "fontYTopPosDecrease": 4,
   // graphicsMode options:
-  //   "raw": original game's rendering, forces 800x600 resolution in fullscreen
-  //   "dx9": upscales to your monitor's native resolution, and corrects aspect ratio for widescreen monitors and DPI scaling
+  //   "raw": original game's rendering
+  //   "dx9": upscales to your monitor's native resolution, and corrects aspect ratio for widescreen monitors and DPI scaling.  This corrects for older games which force 800x600 resolution in fullscreen
   //   "dx11": (experimental) adds a sharpening upscaling shader (CuNNy-fast-NVL)
   "graphicsMode": "dx9",
 
