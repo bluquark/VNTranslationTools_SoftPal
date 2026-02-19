@@ -1,6 +1,6 @@
 {
   // *** VNTextProxy-only settings (winmm.dll)
-  "debugLogging": false,
+  "debugLogging": true,
   // enableFontSubstitution is a global switch to enable/disable all text proxying code in VNTextProxy
   // It should be true if the data files contains English-translated script, false if they contain original Japanese script.
   "enableFontSubstitution": true,
