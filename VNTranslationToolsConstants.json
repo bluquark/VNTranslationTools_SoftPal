@@ -4,20 +4,20 @@
   // enableFontSubstitution is a global switch to enable/disable all text proxying code in VNTextProxy
   // It should be true if the data files contains English-translated script, false if they contain original Japanese script.
   "enableFontSubstitution": true,
-  // Pixels between rows of text.
+  // Pixels between rows of text. Hardcoded override in script.src (only works in Flyable Heart for now)
   "fontYSpacingBetweenLines": 7,
   // Number of pixels to raise all text upward in the textbox.
   "fontYTopPosDecrease": 4,
   // graphicsMode options:
   //   "raw": original game's rendering
-  //   "dx9": upscales to your monitor's native resolution, and corrects aspect ratio for widescreen monitors and DPI scaling.  This corrects for older games which force 800x600 resolution in fullscreen
+  //   "dx9": upscales to your monitor's native resolution, and corrects aspect ratio for widescreen monitors and DPI scaling.  Automatically downgraded to "raw" if the window aspect ratio is already widescreen.
   //   "dx11": (experimental) adds a sharpening upscaling shader (CuNNy-fast-NVL)
   "graphicsMode": "dx9",
 
   // *** VNTextPatch-only settings
   // Line width used by VNTextPatch to determine when to insert <br>s in the script.
   "proportionalLineWidth": 545,
-  // SoftPAL's runtime maximal line width override. It is a VNTextPatch setting because we override it in SCRIPT.SRC.
+  // SoftPAL's runtime maximal line width override. Hardcoded override in script.src (only works in Flyable Heart for now)
   // Generally, we don't want this to ever be reached in the translated script, as it linebreaks character-by-character
   // instead of word-by-word. This value also affects the time it takes to fade-in the text.
   // So this should be slightly larger than proportionalLineWidth.
