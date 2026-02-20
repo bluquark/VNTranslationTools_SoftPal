@@ -16,15 +16,17 @@ namespace VNTextPatch.Shared.Scripts.Softpal
 
         public string Extension => ".src";
 
-        private bool replaceScriptSrcConstant(int originalVal, int replacementVal, int expectedOffset)
+        private bool replaceScriptSrcConstant(string name, int originalVal, int replacementVal, int expectedOffset)
         {
             if (_code[expectedOffset] == (originalVal & 0xFF) && _code[expectedOffset + 1] == (originalVal >> 8))
             {
                 _code[expectedOffset] = (byte)(replacementVal & 0xFF);
                 _code[expectedOffset + 1] = (byte)(replacementVal >> 8);
-                if (RuntimeConfig.DebugLogging) Console.WriteLine($"Replaced script.src value at 0x{expectedOffset:X} from {originalVal} to {replacementVal}");
+                if (RuntimeConfig.DebugLogging) Console.WriteLine($"Replaced script.src value at 0x{expectedOffset:X} ({name}) from {originalVal} to {replacementVal}");
                 return true;
             }
+            int actualVal = _code[expectedOffset] | (_code[expectedOffset + 1] << 8);
+            Console.WriteLine($"Failed to replace script.src value at 0x{expectedOffset:X} ({name}): expected {originalVal}, found {actualVal}");
             return false;
         }
         private void expandMaxLineLength()
@@ -36,7 +38,7 @@ namespace VNTextPatch.Shared.Scripts.Softpal
 
             int expectedOffset = 0x26084;
 
-            replaceScriptSrcConstant(originalVal, replacementVal, expectedOffset);
+            replaceScriptSrcConstant("maxLineWidth", originalVal, replacementVal, expectedOffset);
         }
 
         private void expandSpacingBetweenLines()
@@ -45,17 +47,13 @@ namespace VNTextPatch.Shared.Scripts.Softpal
             int replacementVal = RuntimeConfig.FontYSpacingBetweenLines;
             int expectedOffset = 0x2605C;
 
-            replaceScriptSrcConstant(originalVal, replacementVal, expectedOffset);
+            replaceScriptSrcConstant("fontYSpacingBetweenLines", originalVal, replacementVal, expectedOffset);
         }
 
         public void Load(ScriptLocation location)
         {
             string codeFilePath = location.ToFilePath();
             _code = File.ReadAllBytes(codeFilePath);
-
-            expandMaxLineLength();
-
-            expandSpacingBetweenLines();
 
             string folderPath = Path.GetDirectoryName(codeFilePath);
             string textFilePath = Path.Combine(folderPath, "TEXT.DAT");
@@ -207,6 +205,9 @@ namespace VNTextPatch.Shared.Scripts.Softpal
 
         public void WritePatched(IEnumerable<ScriptString> strings, ScriptLocation location)
         {
+            expandMaxLineLength();
+            expandSpacingBetweenLines();
+
             string codeFilePath = location.ToFilePath();
             using Stream codeStream = File.Open(codeFilePath, FileMode.Create, FileAccess.Write);
             BinaryWriter codeWriter = new BinaryWriter(codeStream);
