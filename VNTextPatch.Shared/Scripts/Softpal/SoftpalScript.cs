@@ -371,9 +371,9 @@ namespace VNTextPatch.Shared.Scripts.Softpal
             }
 
             if (stringEnumerator.MoveNext())
-                throw new InvalidDataException("Too many lines in translation");
+                throw new InvalidDataException($"Too many lines in translation (next unmatched: type={stringEnumerator.Current.Type}, text={stringEnumerator.Current.Text})");
 
-            Console.WriteLine("Inserted script successfully.");
+            Console.WriteLine($"Inserted script successfully. Processed {_textOperands.Count} operands, {iteration} iterations. TEXT.DAT size: {textStream.Length} bytes.");
         }
 
         private static List<int> ReadPointDat(string filePath)
