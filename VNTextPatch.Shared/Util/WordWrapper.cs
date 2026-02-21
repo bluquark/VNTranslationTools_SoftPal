@@ -15,7 +15,7 @@ namespace VNTextPatch.Shared.Util
         {
             if (_longTextboxCount > 0)
             {
-                Console.WriteLine($"Number of overly long textboxes: {_longTextboxCount}");
+                Console.WriteLine($"\u001b[93mNumber of overly long textboxes:\u001b[0m {_longTextboxCount}");
                 _longTextboxCount = 0;
             }
         }
@@ -58,7 +58,7 @@ namespace VNTextPatch.Shared.Util
             if (numLines >= RuntimeConfig.NumLinesWarnThreshold)
             {
                 _longTextboxCount++;
-                Console.WriteLine("Warning: " + numLines + " lines in: " + result.ToString());
+                Console.WriteLine("\u001b[93mWarning: " + numLines + " lines in:\u001b[0m " + result.ToString().Replace("<br>", "\n"));
             }
 
             return result.ToString();

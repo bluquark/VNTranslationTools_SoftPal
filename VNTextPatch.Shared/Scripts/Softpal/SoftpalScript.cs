@@ -26,7 +26,7 @@ namespace VNTextPatch.Shared.Scripts.Softpal
                 return true;
             }
             int actualVal = _code[expectedOffset] | (_code[expectedOffset + 1] << 8);
-            Console.WriteLine($"Failed to replace script.src value at 0x{expectedOffset:X} ({name}): expected {originalVal}, found {actualVal}");
+            Console.WriteLine($"\u001b[93mWarning: Failed to replace script.src value at 0x{expectedOffset:X} ({name}):\u001b[0m expected {originalVal}, found {actualVal}");
             return false;
         }
         private void expandMaxLineLength()
@@ -196,7 +196,7 @@ namespace VNTextPatch.Shared.Scripts.Softpal
             // Truncate to 250 characters to prevent buffer overflow
             if (text.Length > 250)
             {
-                Console.WriteLine("Warning: more than 250 characters in: " + text);
+                Console.WriteLine("\u001b[93mWarning: more than 250 characters in:\u001b[0m " + text);
                 text = text.Substring(0, 250);
             }
 
@@ -255,7 +255,7 @@ namespace VNTextPatch.Shared.Scripts.Softpal
                         int idx = startIdx + j;
                         ScriptStringType actual = idx < _textOperands.Count ? _textOperands[idx].Type : ScriptStringType.Internal;
                         if (actual != expectedTypes[j])
-                            throw new InvalidDataException(
+                            throw RedError(
                                 $"Unexpected split pattern at operand offset 0x{operand.Offset:X}: " +
                                 $"operand[+{idx - operandIdx}] expected {expectedTypes[j]}, got {actual}");
                     }
@@ -264,9 +264,9 @@ namespace VNTextPatch.Shared.Scripts.Softpal
                 string nextString(ScriptStringType expectedType)
                 {
                     if (!stringEnumerator.MoveNext())
-                        throw new InvalidDataException("Not enough lines in translation");
+                        throw RedError("Not enough lines in translation");
                     if (stringEnumerator.Current.Type != expectedType)
-                        throw new InvalidDataException(
+                        throw RedError(
                             $"String type mismatch at iteration #{iteration} " +
                             $"(operand offset 0x{operand.Offset:X}): expected {expectedType}, " +
                             $"got {stringEnumerator.Current.Type}, text={stringEnumerator.Current.Text}");
@@ -316,7 +316,7 @@ namespace VNTextPatch.Shared.Scripts.Softpal
                         string rawMsg2 = nextString(ScriptStringType.Message);
 
                         if (name1 != name2)
-                            throw new InvalidDataException(
+                            throw RedError(
                                 $"Split message name mismatch at operand offset 0x{operand.Offset:X}: \"{name1}\" != \"{name2}\"");
 
                         var (logString, message1, message2) = reconstituteSplitMessage(rawMsg1, rawMsg2);
@@ -371,7 +371,7 @@ namespace VNTextPatch.Shared.Scripts.Softpal
             }
 
             if (stringEnumerator.MoveNext())
-                throw new InvalidDataException($"Too many lines in translation (next unmatched: type={stringEnumerator.Current.Type}, text={stringEnumerator.Current.Text})");
+                throw RedError($"Too many lines in translation (next unmatched: type={stringEnumerator.Current.Type}, text={stringEnumerator.Current.Text})");
 
             Console.WriteLine($"Inserted script successfully. Processed {_textOperands.Count} operands, {iteration} iterations. TEXT.DAT size: {textStream.Length} bytes.");
         }
@@ -383,7 +383,7 @@ namespace VNTextPatch.Shared.Scripts.Softpal
 
             string magic = Encoding.ASCII.GetString(reader.ReadBytes(0x10));
             if (magic != "$POINT_LIST_****")
-                throw new InvalidDataException("Failed to read POINT.DAT: invalid magic");
+                throw RedError("Failed to read POINT.DAT: invalid magic");
 
             List<int> labelOffsets = new List<int>();
             while (stream.Position < stream.Length)
@@ -392,6 +392,11 @@ namespace VNTextPatch.Shared.Scripts.Softpal
             }
             labelOffsets.Reverse();
             return labelOffsets;
+        }
+
+        private static InvalidDataException RedError(string message)
+        {
+            return new InvalidDataException("\u001b[91m" + message + "\u001b[0m");
         }
 
         private static StreamWriter GetDisassemblyWriter(string codeFilePath)
