@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 """
-Convert save files made against the original Japanese TEXT.DAT (source/)
-to work with the partially translated TEXT.DAT (data/).
+Convert save files to work with the current data/script.src and data/TEXT.DAT.
 
-Builds a JP->EN TEXT.DAT offset mapping by comparing source/script.src
-with data/script.src. The translated script has TEXT.DAT references
-patched to point to appended English strings. Save files store a
-TEXT.DAT read pointer (at end_marker - 0x44) that needs remapping.
+Works for both JP->EN conversion and between different translation versions,
+without needing source/script.src.
 
-Untranslated pointers are left as-is since the original JP data is
-preserved at the same offsets in the EN TEXT.DAT.
+Each save file stores a TEXT.DAT read pointer (at end_marker - 0x44) and a
+script.src instruction pointer (at 0x10C). We find the correct TEXT.DAT
+offset by looking up the text display command near the instruction pointer
+in data/script.src, validated against data/TEXT.DAT's entry table.
 """
 
 import sys
@@ -19,37 +18,74 @@ import shutil
 import glob
 import time
 
+PUSH_OPCODE = 0x0001001F
 
-def build_text_mapping(jp_script_path, en_script_path):
-    """Build JP->EN TEXT.DAT offset mapping from script.src diffs.
 
-    VNTextPatch appends translated strings to the end of TEXT.DAT and
-    patches the 4-byte operands in script.src to point there. By diffing
-    the two scripts we get a complete mapping of original -> translated
-    TEXT.DAT offsets.
+def parse_text_dat_entries(text_dat_path):
+    """Parse TEXT.DAT and return set of all entry start offsets.
+
+    Each TEXT.DAT entry is: 4-byte header + null-terminated Shift-JIS string.
+    Walking through sequentially gives us every valid entry offset.
     """
-    with open(jp_script_path, 'rb') as f:
-        jp_script = f.read()
-    with open(en_script_path, 'rb') as f:
-        en_script = f.read()
+    with open(text_dat_path, 'rb') as f:
+        data = f.read()
 
-    assert len(jp_script) == len(en_script), "script.src files must be same size"
+    offsets = set()
+    pos = 0
+    while pos + 4 < len(data):
+        offsets.add(pos)
+        pos += 4  # skip header
+        null_pos = data.find(b'\x00', pos)
+        if null_pos == -1:
+            break
+        pos = null_pos + 1
 
-    # Known non-TEXT.DAT diff positions (config constants patched by VNTextPatch):
-    #   0x02605C = FontYSpacingBetweenLines
-    #   0x026084 = MaxLineWidth
-    skip_offsets = {0x02605C, 0x026084}
+    return offsets
 
-    mapping = {}
-    for i in range(0, len(jp_script) - 3, 4):
-        if i in skip_offsets:
+
+def find_text_ptr_from_sip(script_data, sip, entry_offsets):
+    """Find the TEXT.DAT offset for a save by examining data/script.src near sip.
+
+    The SoftPal VM pushes TEXT.DAT offsets onto a stack before text display
+    syscalls. We scan backwards from sip looking for PUSH instructions whose
+    operands are valid TEXT.DAT entry offsets.
+
+    When a text command has both a character name and message (two adjacent
+    PUSH+offset pairs), we prefer the message (the one further from sip),
+    which is correct for ~93% of saves.
+    """
+    candidates = []  # (script_offset, text_dat_offset)
+
+    for i in range(sip - 4, max(sip - 500, 0), -4):
+        if i < 4:
+            break
+        v = struct.unpack_from('<I', script_data, i)[0]
+
+        # Skip zero, sentinels, opcodes
+        if v == 0 or v in (0x0FFFFFFF, 0xFFFFFFFF):
             continue
-        jp_val = struct.unpack_from('<I', jp_script, i)[0]
-        en_val = struct.unpack_from('<I', en_script, i)[0]
-        if jp_val != en_val:
-            mapping[jp_val] = en_val
+        if (v >> 16) == 1:  # opcode (all SoftPal opcodes have upper 16 bits = 0x0001)
+            continue
 
-    return mapping
+        # Check: preceded by PUSH opcode and valid TEXT.DAT entry
+        prev = struct.unpack_from('<I', script_data, i - 4)[0]
+        if prev == PUSH_OPCODE and v in entry_offsets:
+            candidates.append((i, v))
+            if len(candidates) >= 3:
+                break
+
+    if not candidates:
+        return None
+
+    # If two candidates at adjacent PUSH positions (8 bytes apart = name + message
+    # from the same text command), prefer the further one (message position).
+    if len(candidates) >= 2:
+        addr1, _ = candidates[0]   # closer to sip (name position)
+        addr2, v2 = candidates[1]  # further from sip (message position)
+        if addr1 - addr2 == 8:
+            return v2
+
+    return candidates[0][1]
 
 
 def find_config_block(data):
@@ -59,17 +95,16 @@ def find_config_block(data):
         0xFFFFFFFF, 21, 8, 187, 474, [max_line_width], 90, 182, 445
     Returns the offset of the max_line_width field, or -1 if not found.
     """
-    # Signature: the 5 values before max_line_width
     sig = struct.pack('<5I', 0xFFFFFFFF, 21, 8, 187, 474)
     pos = data.find(sig)
     if pos == -1:
         return -1
-    return pos + len(sig)  # offset of the max_line_width field
+    return pos + len(sig)
 
 
-def convert_save(save_path, output_path, mapping):
+def convert_save(save_path, output_path, script_data, entry_offsets):
     """Convert a single save file:
-    - Remap the TEXT.DAT pointer (at end_marker - 0x44)
+    - Update the TEXT.DAT pointer using sip-based lookup in data/script.src
     - Patch max line width from 528 to 570
     """
     with open(save_path, 'rb') as f:
@@ -85,7 +120,7 @@ def convert_save(save_path, output_path, mapping):
             f.write(data)
         return
 
-    # --- Remap TEXT.DAT pointer ---
+    # --- Update TEXT.DAT pointer ---
     ptr_offset = end_pos - 0x44
     if ptr_offset < 0 or ptr_offset + 4 > len(data):
         print(f"  WARNING: text.dat pointer offset out of range in {basename}, copying as-is")
@@ -94,17 +129,21 @@ def convert_save(save_path, output_path, mapping):
         return
 
     old_ptr = struct.unpack_from('<I', data, ptr_offset)[0]
+    sip = struct.unpack_from('<I', data, 0x10C)[0]
 
     if old_ptr == 0:
         print(f"  {basename}: text.dat ptr is 0 (no active text ref)")
     elif old_ptr == 0x0FFFFFFF:
-        print(f"  {basename}: text.dat ptr is sentinel 0x0FFFFFFF (no text displayed)")
-    elif old_ptr in mapping:
-        new_ptr = mapping[old_ptr]
-        struct.pack_into('<I', data, ptr_offset, new_ptr)
-        print(f"  {basename}: remapped 0x{old_ptr:X} -> 0x{new_ptr:X}")
+        print(f"  {basename}: text.dat ptr is sentinel (no text displayed)")
     else:
-        print(f"  {basename}: ptr 0x{old_ptr:X} not in mapping (untranslated, keeping as-is)")
+        new_ptr = find_text_ptr_from_sip(script_data, sip, entry_offsets)
+        if new_ptr is None:
+            print(f"  {basename}: WARNING: no TEXT.DAT ref found near sip 0x{sip:X}, keeping old ptr")
+        elif new_ptr == old_ptr:
+            print(f"  {basename}: text.dat ptr 0x{old_ptr:X} already correct")
+        else:
+            struct.pack_into('<I', data, ptr_offset, new_ptr)
+            print(f"  {basename}: text.dat ptr 0x{old_ptr:X} -> 0x{new_ptr:X}")
 
     # --- Patch max line width: 528 -> 570 ---
     mlw_offset = find_config_block(data)
@@ -114,9 +153,11 @@ def convert_save(save_path, output_path, mapping):
         old_mlw = struct.unpack_from('<I', data, mlw_offset)[0]
         if old_mlw == 528:
             struct.pack_into('<I', data, mlw_offset, 570)
-            print(f"  {basename}: max line width 528 -> 570 at 0x{mlw_offset:X}")
+            print(f"  {basename}: max line width 528 -> 570")
+        elif old_mlw == 570:
+            pass  # already correct
         else:
-            print(f"  {basename}: WARNING: expected 528 at config block, found {old_mlw}")
+            print(f"  {basename}: WARNING: unexpected line width {old_mlw} at config block")
 
     with open(output_path, 'wb') as f:
         f.write(data)
@@ -129,23 +170,25 @@ def main():
         print(f"Error: directory '{save_dir}' not found")
         sys.exit(1)
 
-    jp_script = 'source/script.src'
-    en_script = 'data/script.src'
-    for path in [jp_script, en_script]:
+    script_path = 'data/script.src'
+    text_dat_path = 'data/TEXT.DAT'
+    for path in [script_path, text_dat_path]:
         if not os.path.isfile(path):
-            print(f"Error: {path} not found (run from FHTest2/)")
+            print(f"Error: {path} not found (run from the game directory)")
             sys.exit(1)
 
-    # Build JP -> EN TEXT.DAT offset mapping
-    print("Building TEXT.DAT offset mapping from script.src diffs...")
-    mapping = build_text_mapping(jp_script, en_script)
-    print(f"  {len(mapping)} translated text entries found")
+    # Load script and TEXT.DAT entry table
+    print("Loading data/script.src and parsing data/TEXT.DAT entries...")
+    with open(script_path, 'rb') as f:
+        script_data = f.read()
+    entry_offsets = parse_text_dat_entries(text_dat_path)
+    print(f"  {len(entry_offsets)} TEXT.DAT entries indexed")
     print()
 
     # Prepare save/ directory
     os.makedirs('save', exist_ok=True)
 
-    # Move existing save/ contents to old_$time/
+    # Move existing save/ contents to a timestamped backup
     existing = glob.glob('save/*')
     if existing:
         timestamp = time.strftime('%Y%m%d_%H%M%S')
@@ -168,11 +211,11 @@ def main():
         dest = os.path.join('save', basename)
 
         if basename == 'continue.dat':
-            print(f"  {basename}: skipped (continue.dat)")
+            print(f"  {basename}: skipped")
             continue
 
         if basename.startswith('save') and basename.endswith('.dat') and basename != 'system.dat':
-            convert_save(f, dest, mapping)
+            convert_save(f, dest, script_data, entry_offsets)
         else:
             shutil.copy2(f, dest)
             print(f"  {basename}: copied as-is")
