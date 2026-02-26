@@ -7,6 +7,16 @@ namespace PALGrabCurrentText {
 	const unsigned char* get();
 }
 
+namespace PALStateDetection {
+	bool Install(HMODULE hPalDll);
+
+	// Passive getters - call proactively to query PAL engine state.
+	// Returns -1 if the function is not available.
+	int CallPalTaskGetState();
+	int CallPalFontGetType();
+	int CallPalEffectEnableIs();
+}
+
 namespace PALVideoFix {
 	bool Install();
 }

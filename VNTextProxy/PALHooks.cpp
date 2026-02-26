@@ -39,6 +39,7 @@ public:
 static const IID IID_ISampleGrabber = { 0x6B652FFF, 0x11FE, 0x4fce, { 0x92, 0xAD, 0x02, 0x66, 0xB5, 0xD7, 0xC7, 0x8F } };
 static const IID IID_ISampleGrabberCB = { 0x0579154A, 0x2B53, 0x4994, { 0xB0, 0xD0, 0xE7, 0x73, 0x14, 0x8E, 0xFF, 0x85 } };
 
+#include "PALStateDetection.h"
 #include "Util/Logger.h"
 
 #define dbg_log(...) proxy_log(LogCategory::HOOKS, __VA_ARGS__)
@@ -158,6 +159,9 @@ namespace PALGrabCurrentText
 
         // Hook PalFontSetType to prevent bitmap font mode (type 4) which bypasses GDI.
         PALFontTypeOverride::Install(hMod);
+
+        // Hook PAL functions related to save/choice mode for state detection and logging.
+        PALStateDetection::Install(hMod);
 
         oPalTaskGetData = (decltype(oPalTaskGetData))GetProcAddress(hMod, "PalTaskGetTaskData");
         if (oPalTaskGetData)
