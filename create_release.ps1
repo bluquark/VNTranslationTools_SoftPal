@@ -20,6 +20,10 @@ Copy-Item "VNTranslationToolsConstants.json" -Destination $releaseDir
 Write-Host "Copying font files..."
 Copy-Item "Fonts\*.ttf" -Destination $releaseDir
 
+# Copy convert_saves.py
+Write-Host "Copying convert_saves.py..."
+Copy-Item "convert_saves.py" -Destination $releaseDir
+
 # Create VNTextPatch subdirectory and copy Build\Release contents
 $vnTextPatchDir = Join-Path $releaseDir "VNTextPatch"
 Write-Host "Creating VNTextPatch subdirectory and copying files..."
