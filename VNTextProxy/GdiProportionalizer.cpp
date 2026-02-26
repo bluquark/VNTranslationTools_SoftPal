@@ -288,7 +288,7 @@ HGDIOBJ GdiProportionalizer::SelectObjectHook(HDC hdc, HGDIOBJ obj)
     if ((isChoice || isSaveScreen) && spriteText)
         currentText = spriteText;
     else
-        currentText = PALGrabCurrentText::get();
+        currentText = fontBeginText;
     proxy_log(LogCategory::TEXT, "GdiProportionalizer::SelectObjectHook(): currentText: %s", currentText);
 
     // Check if this is a font we manage and if text contains Japanese characters
@@ -623,12 +623,12 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
 
     // Process control codes at the very beginning of text (before first character is rendered)
     // For choice/save screens, use the sprite text captured by PALStateDetection hooks.
-    // For normal dialogue, use the task data text from PALGrabCurrentText.
+    // For normal dialogue, use PalFontBegin's a1 captured by PALStateDetection.
     const unsigned char* textString;
     if ((isChoice || isSaveScreen) && spriteText)
         textString = spriteText;
     else
-        textString = PALGrabCurrentText::get();
+        textString = fontBeginText;
 
     bool hasTextGrab = (textString != nullptr);
 

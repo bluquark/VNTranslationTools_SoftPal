@@ -2,11 +2,18 @@
 #include "PALStateDetection.h"
 #include "Util/Logger.h"
 
+// Defined in PALHooks.cpp
+namespace PALGrabCurrentText {
+    extern void* (__cdecl* oPalTaskGetData)(void*);
+    extern int textOffset;
+}
+
 #define dbg_log(...) proxy_log(LogCategory::HOOKS, __VA_ARGS__)
 
 bool isChoice = false;
 bool isSaveScreen = false;
 const unsigned char* spriteText = nullptr;
+const unsigned char* fontBeginText = nullptr;
 
 namespace PALStateDetection
 {
@@ -71,7 +78,81 @@ namespace PALStateDetection
     // NOTE: PalFontSetType is NOT hooked here (already hooked by
     //       PALFontTypeOverride in PALHooks.cpp).
     //===================================================================
-    PAL_HOOK(PalFontBegin)
+
+    // PalFontBegin: captures a1 as the current rendering text pointer.
+    // a1 reliably identifies 3 contexts:
+    //   - taskData + textOffset: body text (use directly)
+    //   - within taskData before textOffset: name struct (no text tracking)
+    //   - anything else: continuation/sprite text (skip leading null bytes)
+    static PalFunc o_PalFontBegin = nullptr;
+
+    static int __cdecl PalFontBegin_Hook(int a1, int a2, int a3, int a4,
+                                          int a5, int a6, int a7, int a8)
+    {
+        dbg_log("[PAL_STATE] PalFontBegin(0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x)",
+                a1, a2, a3, a4, a5, a6, a7, a8);
+
+        // Classify a1 to set fontBeginText for this rendering pass
+        fontBeginText = nullptr;
+
+        __try
+        {
+            if (PALGrabCurrentText::oPalTaskGetData)
+            {
+                void* taskData = PALGrabCurrentText::oPalTaskGetData(nullptr);
+                if (taskData)
+                {
+                    int td = (int)taskData;
+                    int textOff = PALGrabCurrentText::textOffset;
+
+                    if (a1 == td + textOff)
+                    {
+                        // Body text - use a1 directly
+                        fontBeginText = (const unsigned char*)a1;
+                        dbg_log("[FONT_BEGIN] Body text at a1=0x%08x", a1);
+                    }
+                    else if (a1 >= td && a1 < td + textOff)
+                    {
+                        // Within taskData struct before text - name rendering, no text tracking
+                        fontBeginText = nullptr;
+                        dbg_log("[FONT_BEGIN] Name struct at a1=0x%08x (taskData+0x%x)", a1, a1 - td);
+                    }
+                    else
+                    {
+                        // Continuation text or sprite text - skip leading null bytes
+                        const unsigned char* p = (const unsigned char*)a1;
+                        if (!IsBadReadPtr(p, 16))
+                        {
+                            int skip = 0;
+                            while (skip < 16 && p[skip] == 0) skip++;
+                            if (skip < 16)
+                            {
+                                fontBeginText = p + skip;
+                                dbg_log("[FONT_BEGIN] Continuation/sprite text at a1=0x%08x, skip=%d bytes", a1, skip);
+                            }
+                            else
+                            {
+                                dbg_log("[FONT_BEGIN] All nulls at a1=0x%08x", a1);
+                            }
+                        }
+                        else
+                        {
+                            dbg_log("[FONT_BEGIN] Unreadable at a1=0x%08x", a1);
+                        }
+                    }
+                }
+            }
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER)
+        {
+            fontBeginText = nullptr;
+            dbg_log("[FONT_BEGIN] Exception classifying a1=0x%08x", a1);
+        }
+
+        int ret = o_PalFontBegin(a1, a2, a3, a4, a5, a6, a7, a8);
+        dbg_log("[PAL_STATE] PalFontBegin -> 0x%x (%d)", ret, ret);
+        return ret;
+    }
 
     // PalFontEnd: clears isChoice/isSaveScreen/spriteText (sprite text rendering is finished)
     static PalFunc o_PalFontEnd = nullptr;
@@ -81,10 +162,11 @@ namespace PALStateDetection
         dbg_log("[PAL_STATE] PalFontEnd(0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x)",
                 a1, a2, a3, a4, a5, a6, a7, a8);
         int ret = o_PalFontEnd(a1, a2, a3, a4, a5, a6, a7, a8);
-        dbg_log("[PAL_STATE] PalFontEnd -> 0x%x (%d), clearing isChoice/isSaveScreen", ret, ret);
+        dbg_log("[PAL_STATE] PalFontEnd -> 0x%x (%d), clearing isChoice/isSaveScreen/fontBeginText", ret, ret);
         isChoice = false;
         isSaveScreen = false;
         spriteText = nullptr;
+        fontBeginText = nullptr;
         return ret;
     }
     PAL_HOOK(PalFontDrawText)

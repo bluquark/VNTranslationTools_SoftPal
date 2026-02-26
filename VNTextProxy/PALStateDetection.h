@@ -13,6 +13,13 @@ extern bool isSaveScreen;
 // Points into PAL engine memory; valid only while isChoice/isSaveScreen is true.
 extern const unsigned char* spriteText;
 
+// The current rendering text, captured from PalFontBegin's a1 argument.
+// Set by PalFontBegin hook, cleared by PalFontEnd hook.
+// For body text: points to taskData + textOffset (the full dialogue line).
+// For name rendering: nullptr (a1 is a struct, not text).
+// For continuation text (second half of split lines): points past leading null bytes.
+extern const unsigned char* fontBeginText;
+
 namespace PALStateDetection {
     bool Install(HMODULE hPalDll);
 

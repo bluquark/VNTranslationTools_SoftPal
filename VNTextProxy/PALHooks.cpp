@@ -96,47 +96,9 @@ namespace PALGrabCurrentText
 {
     // Newer SoftPAL PalTaskGetTaskData takes one argument (pass NULL to use default task).
     // Older SoftPAL takes no arguments but is __cdecl, so passing an extra arg is harmless.
-    static void* (__cdecl* oPalTaskGetData)(void*) = nullptr;
-    static int textOffset = 0x204;
-
-    // Separate function for SEH - can't mix __try/__except with C++ objects
-    static void* CallGetTaskDataSafe()
-    {
-        __try
-        {
-            return oPalTaskGetData(nullptr);
-        }
-        __except (EXCEPTION_EXECUTE_HANDLER)
-        {
-            return nullptr;
-        }
-    }
-
-    const unsigned char* get()
-    {
-        if (!oPalTaskGetData)
-            return nullptr;
-
-        void* taskData = CallGetTaskDataSafe();
-        if (!taskData)
-            return nullptr;
-
-        // Probe the memory to check if offset is readable
-        const unsigned char* text = (const unsigned char*)taskData + textOffset;
-        if (IsBadReadPtr(text, 1))
-        {
-            dbg_log("PALGrabCurrentText::get(): BAD READ at 0x%p (taskData=0x%p + offset=0x%x)", text, taskData, textOffset);
-            return nullptr;
-        }
-
-        dbg_log("PALGrabCurrentText::get(): text at 0x%p, first bytes: %02x %02x %02x %02x '%c%c%c%c'",
-            text, text[0], text[1], text[2], text[3],
-            (text[0] >= 0x20 && text[0] < 0x7f) ? text[0] : '.',
-            (text[1] >= 0x20 && text[1] < 0x7f) ? text[1] : '.',
-            (text[2] >= 0x20 && text[2] < 0x7f) ? text[2] : '.',
-            (text[3] >= 0x20 && text[3] < 0x7f) ? text[3] : '.');
-        return text;
-    }
+    // Also exposed via PALGrabCurrentTextAccess for cross-TU access.
+    void* (__cdecl* oPalTaskGetData)(void*) = nullptr;
+    int textOffset = 0x204;
 
     bool Install()
     {

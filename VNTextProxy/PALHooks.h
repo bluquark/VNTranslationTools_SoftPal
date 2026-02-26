@@ -4,7 +4,6 @@
 
 namespace PALGrabCurrentText {
 	bool Install();
-	const unsigned char* get();
 }
 
 namespace PALStateDetection {
