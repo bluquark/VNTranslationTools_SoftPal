@@ -164,7 +164,7 @@ def convert_save(save_path, output_path, script_data, entry_offsets):
 
 
 def main():
-    save_dir = sys.argv[1] if len(sys.argv) > 1 else './save_jp'
+    save_dir = sys.argv[1] if len(sys.argv) > 1 else './save'
 
     if not os.path.isdir(save_dir):
         print(f"Error: directory '{save_dir}' not found")
@@ -185,40 +185,31 @@ def main():
     print(f"  {len(entry_offsets)} TEXT.DAT entries indexed")
     print()
 
-    # Prepare save/ directory
-    os.makedirs('save', exist_ok=True)
-
-    # Move existing save/ contents to a timestamped backup
-    existing = glob.glob('save/*')
-    if existing:
-        timestamp = time.strftime('%Y%m%d_%H%M%S')
-        old_dir = f'save_old_{timestamp}'
-        print(f"Moving existing save/ contents to {old_dir}/")
-        os.makedirs(old_dir, exist_ok=True)
-        for f in existing:
-            shutil.move(f, old_dir)
-        print()
-
-    # Process files
+    # Back up save directory before modifying
     files = sorted(glob.glob(os.path.join(save_dir, '*')))
     if not files:
         print(f"No files found in {save_dir}/")
         sys.exit(1)
 
-    print(f"Converting saves from {save_dir}/ to save/...")
+    timestamp = time.strftime('%Y%m%d_%H%M%S')
+    backup_dir = f'save_old_{timestamp}'
+    print(f"Backing up {save_dir}/ to {backup_dir}/")
+    shutil.copytree(save_dir, backup_dir)
+    print()
+
+    # Process files in-place
+    print(f"Converting saves in {save_dir}/...")
     for f in files:
         basename = os.path.basename(f)
-        dest = os.path.join('save', basename)
 
         if basename == 'continue.dat':
             print(f"  {basename}: skipped")
             continue
 
         if basename.startswith('save') and basename.endswith('.dat') and basename != 'system.dat':
-            convert_save(f, dest, script_data, entry_offsets)
+            convert_save(f, f, script_data, entry_offsets)
         else:
-            shutil.copy2(f, dest)
-            print(f"  {basename}: copied as-is")
+            print(f"  {basename}: not a save file, skipped")
 
     print()
     print("Done.")
