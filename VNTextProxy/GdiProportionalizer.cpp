@@ -57,6 +57,9 @@ static std::unordered_map<uint32_t, int> kernAmounts;
 #endif
 static int currentTextOffset = 0;
 static int totalAdvOut = 0;
+static int measureCount = 0;
+static bool isNonDialogue = false;
+static bool hasTextGrab = false;
 
 // Check if a single character is a full-width Japanese/CJK character
 static bool IsJapaneseCharacter(UINT ch)
@@ -337,6 +340,7 @@ BOOL GdiProportionalizer::DeleteObjectHook(HGDIOBJ obj)
 
     currentTextOffset = 0;
     totalAdvOut = 0;
+    measureCount = 0;
     Italic = false;
     Bold = false;
     Monospace = false;
@@ -596,9 +600,27 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
     }
     UINT ch = SJISCharToUnicode(sjisStr, false);
 
+    // Detect non-dialogue screens (save/load, choice menus) by counting measurement calls.
+    // Dialogue generally has exactly 2 measurement calls (pvBuffer==NULL) before each render, except in special cases like em-dash.
+    // Non-dialogue never has 2 measurement calls (1 for normal chars, or N+1 for the first char after
+    // a measurement-only pass that shares the same font cycle).
+    if (pvBuffer == NULL) {
+        measureCount++;
+    } else {
+        isNonDialogue = (measureCount != 2);
+        measureCount = 0;
+    }
+
     // Process control codes at the very beginning of text (before first character is rendered)
     const unsigned char* textString = PALGrabCurrentText::get();
-    bool hasTextGrab = (textString != nullptr);
+
+    // On non-dialogue screens (save/load, choice menus), the text pointer is stale
+    // (points to whatever the last dialogue line was). Disable all text-dependent
+    // processing: kerning, control codes (italic/bold), and text offset tracking.
+    if (textString == nullptr || (currentTextOffset == 0 && isNonDialogue))
+        hasTextGrab = false;
+    if (textString != nullptr && !isNonDialogue)
+        hasTextGrab = true;
 
     if (currentTextOffset == 0 && hasTextGrab) {
         const unsigned char* scanPos = textString;
@@ -669,8 +691,8 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
     double advanceF = abc.abcfA + abc.abcfB + abc.abcfC + kern;
     int advOut = (int)floor(advanceF + 0.5);
 
-    proxy_log(LogCategory::TEXT, "GdiProportionalizer::GetGlyphOutlineAHook() Unicode 0x%x, pvBuffer: %d, advOut: %d, hasTextGrab: %d, a: %f, b: %f, c: %f, kern: %d",
-        ch, pvBuffer != NULL, advOut, hasTextGrab ? 1 : 0, abc.abcfA, abc.abcfB, abc.abcfC, kern);
+    proxy_log(LogCategory::TEXT, "GdiProportionalizer::GetGlyphOutlineAHook() Unicode 0x%x, pvBuffer: %d, advOut: %d, hasTextGrab: %d, isNonDialogue: %d, measureCount: %d, a: %f, b: %f, c: %f, kern: %d",
+        ch, pvBuffer != NULL, advOut, hasTextGrab ? 1 : 0, isNonDialogue, measureCount, abc.abcfA, abc.abcfB, abc.abcfC, kern);
 
     if (pvBuffer && hasTextGrab) {
         const unsigned char* currentChar = textString + currentTextOffset;
@@ -730,8 +752,17 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
 
     // SoftPal systematically adds 2 extra pixels of spacing after every character, beyond what the font specifies.
     // This is not very noticeable with Japanese characters, but it's extremely noticeable with a proportional Latin font.
-    // Cancel out that behavior here.
-    advOut = max(0, advOut - 2);
+    // Cancel out that behavior here. Reduce less aggressively on save/choice screens.
+    int spacingReduction = 2; // dialogue default
+    if (isNonDialogue) {
+        Font* pCurrentFont = CurrentFonts[hdc];
+        int currentHeight = pCurrentFont ? pCurrentFont->GetHeight() : 0;
+        int fullDialogueHeight = GAME_DEFAULT_FONT_HEIGHT + RuntimeConfig::FontHeightIncrease();
+        // Choice screen uses the same font height as dialogue; save screen uses a smaller height.
+        // To compensate for SoftPal engine behavior, we want no reduction at all for choices, and 1 pixel for save screen.
+        spacingReduction = (currentHeight >= fullDialogueHeight) ? 0 : 1;
+    }
+    advOut = max(0, advOut - spacingReduction);
 
     lpgm->gmCellIncX = advOut;
 
