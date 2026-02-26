@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -14,6 +14,7 @@ namespace VNTextPatch
     {
         public static void Main(string[] args)
         {
+            Console.OutputEncoding = System.Text.Encoding.UTF8;
             Options options = Options.Parse(args, out args);
             RuntimeConfig.Load();
             if (args.Length == 0)
@@ -117,9 +118,6 @@ namespace VNTextPatch
                 //                sjisExtPath = Path.Combine(inputLocation.ScriptName != null ? Path.GetDirectoryName(outputPath) : outputPath, "sjis_ext.bin");
             }
 
-            if (File.Exists(sjisExtPath))
-                StringUtil.SjisTunnelEncoding.SetMappingTable(File.ReadAllBytes(sjisExtPath));
-
             try
             {
                 Inserter inserter;
@@ -140,6 +138,10 @@ namespace VNTextPatch
                 byte[] sjisExtContent = StringUtil.SjisTunnelEncoding.GetMappingTable();
                 if (sjisExtContent.Length > 0)
                     File.WriteAllBytes(sjisExtPath, sjisExtContent);
+                else if (File.Exists(sjisExtPath))
+                    File.Delete(sjisExtPath);
+
+                WarnAboutUnknownTunneledCharacters(sjisExtContent);
 
                 if (inserter.Statistics != null)
                     PrintInsertionStatistics(inserter.Statistics);
@@ -177,9 +179,6 @@ namespace VNTextPatch
                 //                sjisExtPath = Path.Combine(inputLocation.ScriptName != null ? Path.GetDirectoryName(outputPath) : outputPath, "sjis_ext.bin");
             }
 
-            if (File.Exists(sjisExtPath))
-                StringUtil.SjisTunnelEncoding.SetMappingTable(File.ReadAllBytes(sjisExtPath));
-
             string textScriptName;
 
             Inserter inserter;
@@ -201,6 +200,10 @@ namespace VNTextPatch
             byte[] sjisExtContent = StringUtil.SjisTunnelEncoding.GetMappingTable();
             if (sjisExtContent.Length > 0)
                 File.WriteAllBytes(sjisExtPath, sjisExtContent);
+            else if (File.Exists(sjisExtPath))
+                File.Delete(sjisExtPath);
+
+            WarnAboutUnknownTunneledCharacters(sjisExtContent);
 
             if (inserter.Statistics != null)
                 PrintInsertionStatistics(inserter.Statistics);
@@ -274,6 +277,39 @@ namespace VNTextPatch
             Console.WriteLine($"Translated:  {statistics.Translated,-10} ({(float)statistics.Translated / statistics.Total:P2})");
             Console.WriteLine($"Checked:     {statistics.Checked,-10} ({(float)statistics.Checked / statistics.Total:P2})");
             Console.WriteLine($"Edited:      {statistics.Edited,-10} ({(float)statistics.Edited / statistics.Total:P2})");
+        }
+
+        private static void WarnAboutUnknownTunneledCharacters(byte[] sjisExtContent)
+        {
+            if (sjisExtContent == null || sjisExtContent.Length == 0)
+                return;
+
+            HashSet<char> knownChars = new HashSet<char>
+            {
+                SharedConstants.MAP_UNICODE_1,
+                SharedConstants.MAP_UNICODE_2,
+                SharedConstants.MAP_UNICODE_3,
+                SharedConstants.MAP_UNICODE_4,
+                SharedConstants.MAP_UNICODE_5,
+                SharedConstants.MAP_UNICODE_6,
+                SharedConstants.MAP_UNICODE_7,
+                SharedConstants.MAP_UNICODE_8,
+            };
+
+            List<char> unknownChars = new List<char>();
+            for (int i = 0; i < sjisExtContent.Length; i += 2)
+            {
+                char c = (char)(sjisExtContent[i] | (sjisExtContent[i + 1] << 8));
+                if (!knownChars.Contains(c))
+                    unknownChars.Add(c);
+            }
+
+            if (unknownChars.Count > 0)
+            {
+                Console.WriteLine($"\u001b[93mWARNING: sjis_ext.bin contains {unknownChars.Count} character(s) not handled by MAP_SJIS constants:\u001b[0m");
+                foreach (char c in unknownChars)
+                    Console.WriteLine($"\u001b[93m  U+{(int)c:X4} '{c}'\u001b[0m");
+            }
         }
 
         private static void PrintUsage()
