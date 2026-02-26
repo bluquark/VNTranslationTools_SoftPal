@@ -1,7 +1,7 @@
 # Softpal-optimized fork notes
 
-This is a fork of VNTranslationTools tailored for the SoftPal engine.  Primarily
-tested on Flyable Heart (2009), and partially tested on Akatsuki Yureru Koi Akari
+This is a fork of VNTranslationTools tailored for the SoftPal engine.  Fully
+working on Flyable Heart (2009), and partially working on Akatsuki Yureru Koi Akari
 (2020).
 
 The base VNTranslationTools repo has basic support for SoftPal, but

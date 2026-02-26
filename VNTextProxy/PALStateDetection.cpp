@@ -137,7 +137,9 @@ namespace PALStateDetection
                         }
                         else
                         {
-                            dbg_log("[FONT_BEGIN] Unreadable at a1=0x%08x", a1);
+                            // a1 is not a valid pointer (e.g. 0x0, 0x1 for backlog entry index).
+                            // Text will be grabbed later by PalFontGetSize_Hook from the rendering struct.
+                            dbg_log("[FONT_BEGIN] Unreadable at a1=0x%08x (backlog mode)", a1);
                         }
                     }
                 }
@@ -170,6 +172,7 @@ namespace PALStateDetection
         return ret;
     }
     PAL_HOOK(PalFontDrawText)
+
     PAL_HOOK(PalFontGetColor)
     PAL_HOOK(PalFontSetColor)
     PAL_HOOK(PalFontGetEffect)
@@ -177,7 +180,39 @@ namespace PALStateDetection
     PAL_HOOK(PalFontGetFontSize)
     PAL_HOOK(PalFontSetFontSize)
     PAL_HOOK(PalFontGetType)
-    PAL_HOOK(PalFontGetSize)
+
+    // PalFontGetSize: in backlog mode, a1 is the same rendering struct as
+    // PalFontDrawText's a2. Grab text from a1+0x20 before the engine measures
+    // the glyph, so GDIProportionalizer has the text for kerning.
+    static PalFunc o_PalFontGetSize = nullptr;
+    static int __cdecl PalFontGetSize_Hook(int a1, int a2, int a3, int a4,
+                                            int a5, int a6, int a7, int a8)
+    {
+        dbg_log("[PAL_STATE] PalFontGetSize(0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x)",
+                a1, a2, a3, a4, a5, a6, a7, a8);
+
+        if (!fontBeginText && !isChoice && !isSaveScreen)
+        {
+            __try
+            {
+                if (!IsBadReadPtr((void*)(a1 + 0x20), 4))
+                {
+                    int textPtr = *(int*)(a1 + 0x20);
+                    if (textPtr && !IsBadReadPtr((void*)textPtr, 4))
+                    {
+                        fontBeginText = (const unsigned char*)textPtr;
+                        dbg_log("[FONT_GETSIZE] Backlog text grabbed from a1+0x20: 0x%08x", textPtr);
+                    }
+                }
+            }
+            __except (EXCEPTION_EXECUTE_HANDLER) {}
+        }
+
+        int ret = o_PalFontGetSize(a1, a2, a3, a4, a5, a6, a7, a8);
+        dbg_log("[PAL_STATE] PalFontGetSize -> 0x%x (%d)", ret, ret);
+        return ret;
+    }
+
     PAL_HOOK(PalFontLoad)
     PAL_HOOK(PalFontUnload)
     PAL_HOOK(PalExFontLoad)
@@ -333,6 +368,7 @@ namespace PALStateDetection
 
         HOOK_ENTRY(PalEffectEnable),
         HOOK_ENTRY(PalEffectEnableIs),
+
     };
 
     //===================================================================
