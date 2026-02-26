@@ -1,14 +1,13 @@
 # Softpal-optimized fork notes
 
-This is a fork of VNTranslationTools tailored for the SoftPal engine.  It has
-been tested to work on Flyable Heart (2009) and Akatsuki Yureru Koi Akari
+This is a fork of VNTranslationTools tailored for the SoftPal engine.  Primarily
+tested on Flyable Heart (2009), and partially tested on Akatsuki Yureru Koi Akari
 (2020).
 
 The base VNTranslationTools repo has basic support for SoftPal, but
 this adds the following improvements:
-* Some behavior is now customizable at runtime using a config file `VNTranslationToolsConstants.json`
 * Correct extraction/insertion for SoftPAL shake effects and "splits" (single textboxes split into 2 `TEXT.DAT` entries)
-* Add hardcoded support for characters like `é` via the half-width katakana codespace (because SJIS tunnelling cannot work in SoftPAL)
+* Add hardcoded support for characters like `é` via the half-width katakana codespace (because SJIS tunnelling does not work in SoftPAL)
 * Correct amount of spacing between letters.  (Notably, space characters are inserted as an ASCII pipe `|` to work around hardcoded space width in SoftPAL.)
 * Kerning
 * Italics (`<i></i>`)

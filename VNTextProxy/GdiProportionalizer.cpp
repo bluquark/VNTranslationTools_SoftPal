@@ -58,6 +58,10 @@ static std::unordered_map<uint32_t, int> kernAmounts;
 #endif
 static int currentTextOffset = 0;
 static int totalAdvOut = 0;
+// Sprite text: engine renders '<' via GDI then skips the tag body.
+// Set when we detect '<' at the next position; cleared after '<' is rendered
+// and we skip the body to stay in sync.
+static bool spriteSkipToCloseBracket = false;
 
 // Check if a single character is a full-width Japanese/CJK character
 static bool IsJapaneseCharacter(UINT ch)
@@ -280,7 +284,11 @@ HFONT GdiProportionalizer::CreateFontIndirectWHook(LOGFONTW* pFontInfo)
 HGDIOBJ GdiProportionalizer::SelectObjectHook(HDC hdc, HGDIOBJ obj)
 {
     proxy_log(LogCategory::TEXT, "GdiProportionalizer::SelectObjectHook() ENTER: hdc=0x%p, obj=0x%p", hdc, obj);
-    const unsigned char* currentText = PALGrabCurrentText::get();
+    const unsigned char* currentText;
+    if ((isChoice || isSaveScreen) && spriteText)
+        currentText = spriteText;
+    else
+        currentText = PALGrabCurrentText::get();
     proxy_log(LogCategory::TEXT, "GdiProportionalizer::SelectObjectHook(): currentText: %s", currentText);
 
     // Check if this is a font we manage and if text contains Japanese characters
@@ -338,6 +346,7 @@ BOOL GdiProportionalizer::DeleteObjectHook(HGDIOBJ obj)
 
     currentTextOffset = 0;
     totalAdvOut = 0;
+    spriteSkipToCloseBracket = false;
     Italic = false;
     Bold = false;
     Monospace = false;
@@ -451,6 +460,21 @@ static const unsigned char* sjis_next_char(const unsigned char* p) {
 
     // Otherwise, single-byte character (ASCII or half-width kana)
     return p + 1;
+}
+
+// Advance currentTextOffset past all characters up to and including the next '>'.
+static const unsigned char* SkipPastCloseBracket(const unsigned char* pos) {
+    while (*pos != '>' && *pos != '\0') {
+        int len = sjis_next_char(pos) - pos;
+        currentTextOffset += len;
+        pos += len;
+    }
+    if (*pos == '>') {
+        int len = sjis_next_char(pos) - pos;
+        currentTextOffset += len;
+        pos += len;
+    }
+    return pos;
 }
 
 static UINT SJISCharToUnicode(const string& sjisStr, bool mapPipeToSpace) {
@@ -611,22 +635,19 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
     if (currentTextOffset == 0 && hasTextGrab) {
         const unsigned char* scanPos = textString;
         bool fontChanged = false;
+        bool isSpriteText = (isChoice || isSaveScreen);
 
+        // Dialogue: engine skips control codes entirely, so we skip them in offset.
+        // Sprite: engine renders '<' via GDI then skips to '>'; we just detect
+        // the first tag and defer the skip to after '<' is rendered.
         while (*scanPos == '<') {
             fontChanged |= ProcessControlCode(scanPos);
-            // Skip past this control code, updating currentTextOffset
-            const unsigned char* prevPos;
-            do {
-                int charLen = sjis_next_char(scanPos) - scanPos;
-                currentTextOffset += charLen;
-                prevPos = scanPos;
-                scanPos += charLen;
-            } while (*prevPos != '>' && *scanPos != '\0');
+            if (isSpriteText) { spriteSkipToCloseBracket = true; break; }
+            scanPos = SkipPastCloseBracket(scanPos);
         }
 
-        if (fontChanged) {
+        if (fontChanged)
             ApplyFontState(hdc);
-        }
     }
 
     DWORD ret = GetGlyphOutlineW(hdc, ch, fuFormat, lpgm, cjBuffer, pvBuffer, lpmat2);
@@ -687,18 +708,24 @@ DWORD GdiProportionalizer::GetGlyphOutlineAHook(HDC hdc, UINT uChar, UINT fuForm
         bool fontChanged = false;
         currentTextOffset += sjisCharLength;
         currentChar += sjisCharLength;
+
+        bool isSpriteText = (isChoice || isSaveScreen);
+
+        // Sprite: finish skipping the tag body after engine rendered '<'
+        if (isSpriteText && spriteSkipToCloseBracket) {
+            spriteSkipToCloseBracket = false;
+            currentChar = SkipPastCloseBracket(currentChar);
+        }
+
+        // Process control codes at current position.
+        // Dialogue: skip entire <tag> (engine doesn't render them).
+        // Sprite: just detect and defer skip until after engine renders '<'.
         while (*currentChar == '<') {
-            proxy_log(LogCategory::TEXT, "GdiProportionalizer control code currentChar: %s", currentChar);
-
+            proxy_log(LogCategory::TEXT, "GdiProportionalizer control code%s currentChar: %s",
+                isSpriteText ? " (sprite)" : "", currentChar);
             fontChanged |= ProcessControlCode(currentChar);
-
-            const unsigned char* previousChar;
-            do {
-                sjisCharLength = sjis_next_char(currentChar) - currentChar;
-                currentTextOffset += sjisCharLength;
-                previousChar = currentChar;
-                currentChar += sjisCharLength;
-            } while (*previousChar != '>' && *currentChar != '\0');
+            if (isSpriteText) { spriteSkipToCloseBracket = true; break; }
+            currentChar = SkipPastCloseBracket(currentChar);
         }
 
 
