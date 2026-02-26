@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -196,8 +196,9 @@ namespace VNTextPatch.Shared.Util
             );
             str = Regex.Replace(
                 str,
-                @"(?<=^|\s)""",
-                m => IsInTag(m.Index) ? m.Value : "“"
+                @"""",
+                m => IsInTag(m.Index) ? m.Value :
+                     IsPrecededByWhitespace(str, m.Index) ? "“" : m.Value
             );
             str = Regex.Replace(
                 str,
@@ -212,6 +213,23 @@ namespace VNTextPatch.Shared.Util
                     return false;
 
                 return tagMatches.Cast<Match>().Any(m => index >= m.Index && index < m.Index + m.Length);
+            }
+
+            bool IsPrecededByWhitespace(string s, int index)
+            {
+                // Walk backwards past control codes to find the effective preceding character.
+                // <br> is treated as whitespace itself.
+                int pos = index - 1;
+                while (pos >= 0 && s[pos] == '>')
+                {
+                    int tagStart = s.LastIndexOf('<', pos);
+                    if (tagStart < 0) break;
+                    string tag = s.Substring(tagStart, pos - tagStart + 1);
+                    if (tag == "<br>")
+                        return true;
+                    pos = tagStart - 1;
+                }
+                return pos < 0 || char.IsWhiteSpace(s[pos]);
             }
         }
     }

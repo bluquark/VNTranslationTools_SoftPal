@@ -2,6 +2,7 @@ using NPOI.OpenXmlFormats.Dml.Diagram;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using VNTextPatch.Shared.Util;
@@ -123,7 +124,7 @@ namespace VNTextPatch.Shared.Scripts.Softpal
         private static Regex controlCodeRegex = new Regex(@"<([^>]+)>");
         private static Regex sizeCodeRegex = new Regex(@"^<s(\d+)>");
 
-        private string SoftpalizeText(string text)
+        private string SoftpalizeText(string text, Boolean warningsEnabled = true)
         {
             bool noWrap = false;
             if (text.StartsWith("<noWrap>") || text.StartsWith("<nowrap>"))
@@ -150,6 +151,12 @@ namespace VNTextPatch.Shared.Scripts.Softpal
             if (!monospace)
             {
                 text = StringUtil.FancifyQuotes(text);
+
+                if (warningsEnabled && text.Count(c => c == '\u201c') != text.Count(c => c == '\u201d'))
+                {
+                    Console.WriteLine("\u001b[93mWarning: unmatched double-quote in\u001b[0m " +
+                        text.Replace("\u201c", "\u001b[93m\u201c\u001b[0m").Replace("\u201d", "\u001b[93m\u201d\u001b[0m"));
+                }
 
                 text = text.Replace("--", "―"); // em dash replacement
             }
@@ -196,7 +203,10 @@ namespace VNTextPatch.Shared.Scripts.Softpal
             // Truncate to 250 characters to prevent buffer overflow
             if (text.Length > 250)
             {
-                Console.WriteLine("\u001b[93mWarning: more than 250 characters in:\u001b[0m " + text);
+                if (warningsEnabled)
+                {
+                    Console.WriteLine("\u001b[93mWarning: more than 250 characters in:\u001b[0m " + text);
+                }
                 text = text.Substring(0, 250);
             }
 
@@ -278,7 +288,7 @@ namespace VNTextPatch.Shared.Scripts.Softpal
                 (string logString, string msg1, string msg2) reconstituteSplitMessage(string rawMsg1, string rawMsg2)
                 {
                     string log = SoftpalizeText(rawMsg1 + rawMsg2);
-                    string fmtMsg1 = SoftpalizeText(rawMsg1);
+                    string fmtMsg1 = SoftpalizeText(rawMsg1, warningsEnabled: false);
 
                     int cutpoint = fmtMsg1.Length;
                     // Final space may be converted to '<br>' so move the cutpoint back 1 to avoid splitting the control code
