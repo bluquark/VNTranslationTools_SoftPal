@@ -59,6 +59,23 @@ static std::unordered_map<uint32_t, int> kernAmounts;
 static int currentTextOffset = 0;
 static int totalAdvOut = 0;
 
+// Cache for GetStringAdvance results, keyed by (HFONT, text).
+struct StringAdvanceCacheKey {
+    HFONT font;
+    std::wstring text;
+    bool operator==(const StringAdvanceCacheKey& other) const {
+        return font == other.font && text == other.text;
+    }
+};
+struct StringAdvanceCacheHash {
+    size_t operator()(const StringAdvanceCacheKey& k) const {
+        size_t h1 = std::hash<HFONT>{}(k.font);
+        size_t h2 = std::hash<std::wstring>{}(k.text);
+        return h1 ^ (h2 * 2654435761u);
+    }
+};
+static std::unordered_map<StringAdvanceCacheKey, int, StringAdvanceCacheHash> stringAdvanceCache;
+
 // Maps each custom HFONT back to the game's original font name and height,
 // so the Japanese fallback can use the correct original per font handle.
 struct OriginalFontInfo { std::wstring name; LONG height; };
@@ -532,6 +549,12 @@ static UINT SJISCharToUnicode(const string& sjisStr, bool mapPipeToSpace) {
 
 static int GetStringAdvance(HDC hdc, SCRIPT_CACHE* psc, const wchar_t* text, int count)
 {
+    HFONT hFont = (HFONT)GetCurrentObject(hdc, OBJ_FONT);
+    StringAdvanceCacheKey key{ hFont, std::wstring(text, count) };
+    auto it = stringAdvanceCache.find(key);
+    if (it != stringAdvanceCache.end())
+        return it->second;
+
     SCRIPT_ITEM items[4];
     int numItems = 0;
     if (FAILED(ScriptItemize(text, count, _countof(items), nullptr, nullptr, items, &numItems)))
@@ -560,6 +583,7 @@ static int GetStringAdvance(HDC hdc, SCRIPT_CACHE* psc, const wchar_t* text, int
 
     int total = 0;
     for (int i = 0; i < numGlyphs; ++i) total += advances[i];
+    stringAdvanceCache[key] = total;
     return total;
 }
 
