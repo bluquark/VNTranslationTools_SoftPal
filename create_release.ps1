@@ -31,7 +31,7 @@ New-Item -ItemType Directory -Path $vnTextPatchDir -Force | Out-Null
 Copy-Item "Build\Release\*" -Destination $vnTextPatchDir -Recurse
 
 # Create zip file inside the release directory
-$zipPath = Join-Path $releaseDir "VNTranslationTools_SoftPal.zip"
+$zipPath = Join-Path $releaseDir "VNTranslationTools_SoftPal_${date}.zip"
 Write-Host "Creating zip file: $zipPath"
 if (Test-Path $zipPath) {
     Remove-Item $zipPath -Force
