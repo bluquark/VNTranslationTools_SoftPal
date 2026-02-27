@@ -7,6 +7,10 @@ namespace PALGrabCurrentText {
     extern void* (__cdecl* oPalTaskGetData)(void*);
     extern int textOffset;
 }
+namespace PALFontTypeOverride {
+    extern int (__cdecl* oPalFontSetType)(int type);
+    extern bool engineUsesType4;
+}
 
 #define dbg_log(...) proxy_log(LogCategory::HOOKS, __VA_ARGS__)
 
@@ -86,6 +90,27 @@ namespace PALStateDetection
     //   - anything else: continuation/sprite text (skip leading null bytes)
     static PalFunc o_PalFontBegin = nullptr;
 
+    // Tracks whether PalFontBegin switched to bitmap font mode for Japanese text,
+    // so PalFontEnd can restore GDI mode.
+    static bool switchedToBitmapFont = false;
+
+    // Separated from PalFontBegin_Hook because __try and C++ objects with
+    // destructors (std::wstring) cannot coexist in the same function.
+    static void CheckJapaneseFontSwitch()
+    {
+        if (fontBeginText != nullptr && PALFontTypeOverride::oPalFontSetType != nullptr
+            && PALFontTypeOverride::engineUsesType4)
+        {
+            std::wstring wideText = SjisTunnelEncoding::Decode(reinterpret_cast<const char*>(fontBeginText));
+            if (GdiProportionalizer::ContainsJapaneseCharacters(wideText.c_str()))
+            {
+                dbg_log("[FONT_BEGIN] Japanese text detected, switching to bitmap font (type 4)");
+                PALFontTypeOverride::oPalFontSetType(4);
+                switchedToBitmapFont = true;
+            }
+        }
+    }
+
     static int __cdecl PalFontBegin_Hook(int a1, int a2, int a3, int a4,
                                           int a5, int a6, int a7, int a8)
     {
@@ -151,6 +176,10 @@ namespace PALStateDetection
             dbg_log("[FONT_BEGIN] Exception classifying a1=0x%08x", a1);
         }
 
+        // If this text contains Japanese characters, switch to bitmap font mode (type 4)
+        // so the engine's native renderer handles it instead of our GDI hooks.
+        CheckJapaneseFontSwitch();
+
         int ret = o_PalFontBegin(a1, a2, a3, a4, a5, a6, a7, a8);
         dbg_log("[PAL_STATE] PalFontBegin -> 0x%x (%d)", ret, ret);
         return ret;
@@ -165,6 +194,15 @@ namespace PALStateDetection
                 a1, a2, a3, a4, a5, a6, a7, a8);
         int ret = o_PalFontEnd(a1, a2, a3, a4, a5, a6, a7, a8);
         dbg_log("[PAL_STATE] PalFontEnd -> 0x%x (%d), clearing isChoice/isSaveScreen/fontBeginText", ret, ret);
+
+        // Restore GDI font mode if we switched to bitmap for Japanese text
+        if (switchedToBitmapFont && PALFontTypeOverride::oPalFontSetType != nullptr)
+        {
+            dbg_log("[FONT_END] Restoring GDI font mode (type 1)");
+            PALFontTypeOverride::oPalFontSetType(1);
+            switchedToBitmapFont = false;
+        }
+
         isChoice = false;
         isSaveScreen = false;
         spriteText = nullptr;

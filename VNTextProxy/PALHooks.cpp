@@ -49,12 +49,16 @@ namespace PALFontTypeOverride
     // PalFontSetType(int type) -> int (returns 1 on success, 0 on failure)
     // When font type == 4, PAL.dll uses a built-in bitmap font renderer that bypasses GDI entirely.
     // We intercept this and force type 1 (GDI-based rendering) so our font substitution hooks work.
-    static int (__cdecl* oPalFontSetType)(int type) = nullptr;
+    // Exposed so PALStateDetection can switch back to type 4 for Japanese text.
+    int (__cdecl* oPalFontSetType)(int type) = nullptr;
+    // True if the engine ever requested type 4 (bitmap font mode).
+    bool engineUsesType4 = false;
 
     static int __cdecl PalFontSetType_Hook(int type)
     {
         if (type == 4)
         {
+            engineUsesType4 = true;
             dbg_log("PALFontTypeOverride: intercepted PalFontSetType(%d) -> redirecting to type 1", type);
             type = 1;
         }

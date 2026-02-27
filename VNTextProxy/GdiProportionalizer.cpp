@@ -82,7 +82,7 @@ static bool IsJapaneseCharacter(UINT ch)
 // Check if text contains Japanese script characters (Hiragana, Katakana, CJK ideographs).
 // Intentionally excludes CJK punctuation and fullwidth forms since those can appear in
 // translated English text and should not trigger a switch to the Japanese font.
-static bool ContainsJapaneseCharacters(const wchar_t* text)
+bool GdiProportionalizer::ContainsJapaneseCharacters(const wchar_t* text)
 {
     if (text == nullptr)
         return false;

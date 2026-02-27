@@ -4,6 +4,7 @@ class GdiProportionalizer : public Proportionalizer
 {
 public:
     static void Init();
+    static bool ContainsJapaneseCharacters(const wchar_t* text);
 
     // Trampoline pointers to the REAL GDI functions (after DetourAttach).
     // Use these instead of calling SelectObject/DeleteObject directly
