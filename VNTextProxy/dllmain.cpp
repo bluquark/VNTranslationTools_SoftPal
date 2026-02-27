@@ -6,6 +6,8 @@
 #include "DX11Hooks.h"
 #include "Util/Logger.h"
 #include <sstream>
+#include <DbgHelp.h>
+#pragma comment(lib, "dbghelp.lib")
 
 void* OriginalEntryPoint;
 
@@ -67,6 +69,90 @@ static bool IsFatalExceptionCode(DWORD code)
     }
 }
 
+static void LogFrameAddress(int index, DWORD addr)
+{
+    char moduleName[MAX_PATH] = "???";
+    DWORD moduleOffset = 0;
+
+    HMODULE hMod = nullptr;
+    if (GetModuleHandleExW(
+            GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+            (LPCWSTR)(DWORD_PTR)addr, &hMod))
+    {
+        wchar_t modPath[MAX_PATH];
+        GetModuleFileNameW(hMod, modPath, MAX_PATH);
+        const wchar_t* modName = wcsrchr(modPath, L'\\');
+        modName = modName ? modName + 1 : modPath;
+        WideCharToMultiByte(CP_UTF8, 0, modName, -1, moduleName, sizeof(moduleName), nullptr, nullptr);
+        moduleOffset = (DWORD)((DWORD_PTR)addr - (DWORD_PTR)hMod);
+    }
+
+    proxy_log(LogCategory::FATAL, "    [%2d] %s + 0x%08X", index, moduleName, moduleOffset);
+}
+
+static void LogCallStack(CONTEXT* ctx)
+{
+    HANDLE hProcess = GetCurrentProcess();
+    HANDLE hThread = GetCurrentThread();
+
+    SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
+    SymInitialize(hProcess, nullptr, TRUE);
+
+    CONTEXT ctxCopy = *ctx;
+
+    // If EIP is 0 (null function pointer call), recover the caller from the stack.
+    // A "call" pushes the return address onto ESP, so [ESP] is the caller.
+    int startIndex = 0;
+    if (ctxCopy.Eip == 0)
+    {
+        __try
+        {
+            DWORD returnAddr = *(DWORD*)(DWORD_PTR)ctxCopy.Esp;
+            if (returnAddr != 0)
+            {
+                proxy_log(LogCategory::FATAL, "  Call stack (EIP was 0, recovered from ESP):");
+                LogFrameAddress(0, returnAddr);
+                startIndex = 1;
+                ctxCopy.Eip = returnAddr;
+                ctxCopy.Esp += 4;
+            }
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER)
+        {
+            proxy_log(LogCategory::FATAL, "  Call stack (EIP was 0, could not read ESP):");
+            SymCleanup(hProcess);
+            return;
+        }
+    }
+    else
+    {
+        proxy_log(LogCategory::FATAL, "  Call stack:");
+    }
+
+    STACKFRAME64 frame = {};
+    frame.AddrPC.Offset = ctxCopy.Eip;
+    frame.AddrPC.Mode = AddrModeFlat;
+    frame.AddrFrame.Offset = ctxCopy.Ebp;
+    frame.AddrFrame.Mode = AddrModeFlat;
+    frame.AddrStack.Offset = ctxCopy.Esp;
+    frame.AddrStack.Mode = AddrModeFlat;
+
+    for (int i = startIndex; i < 64; i++)
+    {
+        if (!StackWalk64(IMAGE_FILE_MACHINE_I386, hProcess, hThread,
+                         &frame, &ctxCopy, nullptr,
+                         SymFunctionTableAccess64, SymGetModuleBase64, nullptr))
+            break;
+
+        if (frame.AddrPC.Offset == 0)
+            break;
+
+        LogFrameAddress(i, (DWORD)frame.AddrPC.Offset);
+    }
+
+    SymCleanup(hProcess);
+}
+
 static LONG CALLBACK VectoredCrashHandler(EXCEPTION_POINTERS* ep)
 {
     EXCEPTION_RECORD* er = ep->ExceptionRecord;
@@ -117,6 +203,8 @@ static LONG CALLBACK VectoredCrashHandler(EXCEPTION_POINTERS* ep)
         ctx->Esi, ctx->Edi, ctx->Ebp, ctx->Esp);
     proxy_log(LogCategory::FATAL, "  EIP=%08X EFLAGS=%08X",
         ctx->Eip, ctx->EFlags);
+
+    LogCallStack(ctx);
 
     return EXCEPTION_CONTINUE_SEARCH;
 }
