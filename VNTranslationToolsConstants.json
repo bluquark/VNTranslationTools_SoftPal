@@ -4,6 +4,9 @@
   // enableFontSubstitution is a global switch to enable/disable all text proxying code in VNTextProxy
   // It should be true if the data files contains English-translated script, false if they contain original Japanese script.
   "enableFontSubstitution": true,
+  // When true, text containing Japanese characters falls back to MS Gothic instead of the custom font.
+  // Set to false if you want the custom font used for all text regardless of language.
+  "japaneseFontFallback": true,
   // Pixels between rows of text. Hardcoded override in script.src (only works in Flyable Heart for now)
   "fontYSpacingBetweenLines": 7,
   // Number of pixels to raise all text upward in the textbox.

@@ -13,6 +13,7 @@ public:
     // Accessors (call only after Load())
     static bool DebugLogging();
     static bool EnableFontSubstitution();
+    static bool JapaneseFontFallback();
     static bool PillarboxedFullscreen();
     static bool DirectX11Upscaling();
     static void OverrideToRaw();
@@ -29,6 +30,7 @@ private:
     static inline bool _loaded = false;
     static inline bool _debugLogging;
     static inline bool _enableFontSubstitution;
+    static inline bool _japaneseFontFallback;
     static inline bool _pillarboxedFullscreen;
     static inline bool _directX11Upscaling;
     static inline std::wstring _customFontFilename;

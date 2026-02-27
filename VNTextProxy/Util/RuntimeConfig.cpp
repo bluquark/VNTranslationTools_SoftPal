@@ -53,6 +53,7 @@ void RuntimeConfig::Load()
     {
         _debugLogging = config.value("debugLogging", true);
         _enableFontSubstitution = config.value("enableFontSubstitution", true);
+        _japaneseFontFallback = config.value("japaneseFontFallback", true);
         _customFontFilename = Utf8ToWstring(config.at("customFontFilename").get<std::string>());
         _monospaceFontFilename = Utf8ToWstring(config.at("monospaceFontFilename").get<std::string>());
         _fontHeightIncrease = config.at("fontHeightIncrease").get<int>();
@@ -98,6 +99,7 @@ void RuntimeConfig::Load()
     proxy_log(LogCategory::INIT, "RuntimeConfig::Load() SUCCESS - Config loaded:");
     proxy_log(LogCategory::INIT, "  debugLogging: %s", _debugLogging ? "true" : "false");
     proxy_log(LogCategory::INIT, "  enableFontSubstitution: %s", _enableFontSubstitution ? "true" : "false");
+    proxy_log(LogCategory::INIT, "  japaneseFontFallback: %s", _japaneseFontFallback ? "true" : "false");
     proxy_log(LogCategory::INIT, "  graphicsMode: %s (pillarboxed=%s, dx11=%s)",
         _pillarboxedFullscreen ? (_directX11Upscaling ? "dx11" : "dx9") : "raw",
         _pillarboxedFullscreen ? "true" : "false",
@@ -114,6 +116,7 @@ void RuntimeConfig::Load()
 
 bool RuntimeConfig::DebugLogging() { return _debugLogging; }
 bool RuntimeConfig::EnableFontSubstitution() { return _enableFontSubstitution; }
+bool RuntimeConfig::JapaneseFontFallback() { return _japaneseFontFallback; }
 bool RuntimeConfig::PillarboxedFullscreen() { return _pillarboxedFullscreen; }
 bool RuntimeConfig::DirectX11Upscaling() { return _directX11Upscaling; }
 void RuntimeConfig::OverrideToRaw()

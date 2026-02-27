@@ -58,6 +58,11 @@ static std::unordered_map<uint32_t, int> kernAmounts;
 #endif
 static int currentTextOffset = 0;
 static int totalAdvOut = 0;
+
+// Maps each custom HFONT back to the game's original font name and height,
+// so the Japanese fallback can use the correct original per font handle.
+struct OriginalFontInfo { std::wstring name; LONG height; };
+static std::unordered_map<HFONT, OriginalFontInfo> originalFontMap;
 // Sprite text: engine renders '<' via GDI then skips the tag body.
 // Set when we detect '<' at the next position; cleared after '<' is rendered
 // and we skip the body to stay in sync.
@@ -264,7 +269,12 @@ HFONT GdiProportionalizer::CreateFontIndirectWHook(LOGFONTW* pFontInfo)
         return FontManager.FetchFont(*pFontInfo)->GetGdiHandle();
     }
 
-    LONG height = pFontInfo->lfHeight; // normally 21
+    wstring origName = pFontInfo->lfFaceName;
+    LONG origHeight = pFontInfo->lfHeight;
+    proxy_log(LogCategory::TEXT, "GdiProportionalizer::CreateFontIndirectWHook(): game original font: '%s', height: %d",
+        WideToUTF8(origName.c_str()).c_str(), origHeight);
+
+    LONG height = origHeight; // normally 21
 #if ENLARGE_FONT
     height += RuntimeConfig::FontHeightIncrease();
 #endif
@@ -275,8 +285,11 @@ HFONT GdiProportionalizer::CreateFontIndirectWHook(LOGFONTW* pFontInfo)
         CustomFontName.c_str(), height);
 
     Font* pFont = FontManager.FetchFont(CustomFontName, height, Bold, Italic, Underline);
-    proxy_log(LogCategory::TEXT, "GdiProportionalizer::CreateFontIndirectWHook(): FetchFont returned 0x%p", pFont);
     HFONT hFont = pFont->GetGdiHandle();
+
+    // Store the original font info keyed by the custom HFONT we return
+    originalFontMap[hFont] = { origName, origHeight };
+
     proxy_log(LogCategory::TEXT, "GdiProportionalizer::CreateFontIndirectWHook(): returning HFONT 0x%p", hFont);
     return hFont;
 }
@@ -293,15 +306,20 @@ HGDIOBJ GdiProportionalizer::SelectObjectHook(HDC hdc, HGDIOBJ obj)
 
     // Check if this is a font we manage and if text contains Japanese characters
     Font* pFont = FontManager.GetFont(static_cast<HFONT>(obj));
-    if (pFont != nullptr && !CustomFontName.empty() && currentText != nullptr)
+    if (RuntimeConfig::JapaneseFontFallback() && pFont != nullptr && !CustomFontName.empty() && currentText != nullptr)
     {
-        wstring wideText = SjisTunnelEncoding::Decode(reinterpret_cast<const char*>(currentText));
-        if (ContainsJapaneseCharacters(wideText.c_str()))
+        auto it = originalFontMap.find(static_cast<HFONT>(obj));
+        if (it != originalFontMap.end())
         {
-            // Use MS Gothic at game default size for Japanese text
-            pFont = FontManager.FetchFont(JAPANESE_FONT_NAME, GAME_DEFAULT_FONT_HEIGHT, false, false, false);
-            obj = pFont->GetGdiHandle();
-            proxy_log(LogCategory::TEXT, "GdiProportionalizer::SelectObjectHook(): Switching to Japanese font for text: %s", currentText);
+            wstring wideText = SjisTunnelEncoding::Decode(reinterpret_cast<const char*>(currentText));
+            if (ContainsJapaneseCharacters(wideText.c_str()))
+            {
+                const auto& orig = it->second;
+                pFont = FontManager.FetchFont(orig.name, orig.height, false, false, false);
+                obj = pFont->GetGdiHandle();
+                proxy_log(LogCategory::TEXT, "GdiProportionalizer::SelectObjectHook(): Switching to game font '%s' (height %d) for Japanese text: %s",
+                    WideToUTF8(orig.name.c_str()).c_str(), orig.height, currentText);
+            }
         }
     }
 
