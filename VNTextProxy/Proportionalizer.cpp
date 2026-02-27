@@ -1,14 +1,9 @@
 ﻿#include "pch.h"
 #include "SharedConstants.h"
+#include "Util/Logger.h"
 #include <sstream>
 
 using namespace std;
-
-static void ShowErrorAndExit(const wstring& message)
-{
-    MessageBoxW(nullptr, message.c_str(), L"VNTranslationTools Error", MB_OK | MB_ICONERROR);
-    ExitProcess(1);
-}
 
 void Proportionalizer::Init()
 {

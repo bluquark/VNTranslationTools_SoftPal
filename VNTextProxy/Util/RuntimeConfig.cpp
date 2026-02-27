@@ -19,12 +19,6 @@ static std::wstring Utf8ToWstring(const std::string& utf8Str)
     return wstr;
 }
 
-static void ShowErrorAndExit(const std::wstring& message)
-{
-    MessageBoxW(nullptr, message.c_str(), L"VNTranslationTools Configuration Error", MB_OK | MB_ICONERROR);
-    ExitProcess(1);
-}
-
 void RuntimeConfig::Load()
 {
     if (_loaded)
@@ -101,21 +95,21 @@ void RuntimeConfig::Load()
     _loaded = true;
 
     // Debug: Log loaded values to confirm config was read
-    proxy_log(LogCategory::HOOKS, "RuntimeConfig::Load() SUCCESS - Config loaded:");
-    proxy_log(LogCategory::HOOKS, "  debugLogging: %s", _debugLogging ? "true" : "false");
-    proxy_log(LogCategory::HOOKS, "  enableFontSubstitution: %s", _enableFontSubstitution ? "true" : "false");
-    proxy_log(LogCategory::HOOKS, "  graphicsMode: %s (pillarboxed=%s, dx11=%s)",
+    proxy_log(LogCategory::INIT, "RuntimeConfig::Load() SUCCESS - Config loaded:");
+    proxy_log(LogCategory::INIT, "  debugLogging: %s", _debugLogging ? "true" : "false");
+    proxy_log(LogCategory::INIT, "  enableFontSubstitution: %s", _enableFontSubstitution ? "true" : "false");
+    proxy_log(LogCategory::INIT, "  graphicsMode: %s (pillarboxed=%s, dx11=%s)",
         _pillarboxedFullscreen ? (_directX11Upscaling ? "dx11" : "dx9") : "raw",
         _pillarboxedFullscreen ? "true" : "false",
         _directX11Upscaling ? "true" : "false");
-    proxy_log(LogCategory::HOOKS, "  customFontFilename: %ls", _customFontFilename.c_str());
-    proxy_log(LogCategory::HOOKS, "  monospaceFontFilename: %ls", _monospaceFontFilename.c_str());
-    proxy_log(LogCategory::HOOKS, "  fontHeightIncrease: %d", _fontHeightIncrease);
-    proxy_log(LogCategory::HOOKS, "  fontYSpacingBetweenLines: %d", _fontYSpacingBetweenLines);
-    proxy_log(LogCategory::HOOKS, "  fontYTopPosDecrease: %d", _fontYTopPosDecrease);
-    proxy_log(LogCategory::HOOKS, "  proportionalLineWidth: %d", _proportionalLineWidth);
-    proxy_log(LogCategory::HOOKS, "  maxLineWidth: %d", _maxLineWidth);
-    proxy_log(LogCategory::HOOKS, "  numLinesWarnThreshold: %d", _numLinesWarnThreshold);
+    proxy_log(LogCategory::INIT, "  customFontFilename: %ls", _customFontFilename.c_str());
+    proxy_log(LogCategory::INIT, "  monospaceFontFilename: %ls", _monospaceFontFilename.c_str());
+    proxy_log(LogCategory::INIT, "  fontHeightIncrease: %d", _fontHeightIncrease);
+    proxy_log(LogCategory::INIT, "  fontYSpacingBetweenLines: %d", _fontYSpacingBetweenLines);
+    proxy_log(LogCategory::INIT, "  fontYTopPosDecrease: %d", _fontYTopPosDecrease);
+    proxy_log(LogCategory::INIT, "  proportionalLineWidth: %d", _proportionalLineWidth);
+    proxy_log(LogCategory::INIT, "  maxLineWidth: %d", _maxLineWidth);
+    proxy_log(LogCategory::INIT, "  numLinesWarnThreshold: %d", _numLinesWarnThreshold);
 }
 
 bool RuntimeConfig::DebugLogging() { return _debugLogging; }
@@ -128,7 +122,7 @@ void RuntimeConfig::OverrideToRaw()
         return;
     _pillarboxedFullscreen = false;
     _directX11Upscaling = false;
-    proxy_log(LogCategory::HOOKS, "RuntimeConfig: Widescreen game detected - auto-overriding to raw mode");
+    proxy_log(LogCategory::INIT, "RuntimeConfig: Widescreen game detected - auto-overriding to raw mode");
 }
 const std::wstring& RuntimeConfig::CustomFontFilename() { return _customFontFilename; }
 const std::wstring& RuntimeConfig::MonospaceFontFilename() { return _monospaceFontFilename; }

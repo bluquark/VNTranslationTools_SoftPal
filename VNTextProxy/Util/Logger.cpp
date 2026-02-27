@@ -14,6 +14,8 @@ static const char* GetCategoryPrefix(LogCategory category)
         case LogCategory::DX11:   return "[DX11] ";
         case LogCategory::HOOKS:  return "[HOOKS] ";
         case LogCategory::TEXT:   return "[TEXT] ";
+        case LogCategory::INIT:  return "[INIT] ";
+        case LogCategory::FATAL: return "[FATAL] ";
         default:                  return "[???] ";
     }
 }
@@ -38,4 +40,11 @@ void proxy_log(LogCategory category, const char* format, ...)
         fprintf(g_proxyLog, "\n");
         fflush(g_proxyLog);
     }
+}
+
+void ShowErrorAndExit(const std::wstring& message)
+{
+    proxy_log(LogCategory::FATAL, "%ls", message.c_str());
+    MessageBoxW(nullptr, message.c_str(), L"VNTranslationTools Error", MB_OK | MB_ICONERROR);
+    ExitProcess(1);
 }
