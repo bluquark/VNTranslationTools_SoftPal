@@ -260,9 +260,32 @@ void Initialize()
 
     proxy_log(LogCategory::INIT, "VNTextProxy built: " __DATE__ " " __TIME__);
     LogDirectoryListing("Current directory (.\\*)", L".\\*");
-    LogDirectoryListing("data\\*", L"data\\*");
-    LogDirectoryListing("dll\\*", L"dll\\*");
-    LogDirectoryListing("save\\*", L"save\\*");
+
+    // Log contents of all subdirectories
+    WIN32_FIND_DATAW dirData;
+    HANDLE hDirFind = FindFirstFileW(L".\\*", &dirData);
+    if (hDirFind != INVALID_HANDLE_VALUE)
+    {
+        do
+        {
+            if (wcscmp(dirData.cFileName, L".") == 0 || wcscmp(dirData.cFileName, L"..") == 0)
+                continue;
+
+            if (dirData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+            {
+                char labelBuf[280];
+                char nameBuf[260];
+                WideCharToMultiByte(CP_UTF8, 0, dirData.cFileName, -1, nameBuf, sizeof(nameBuf), nullptr, nullptr);
+                snprintf(labelBuf, sizeof(labelBuf), "%s\\*", nameBuf);
+
+                wchar_t searchBuf[280];
+                swprintf_s(searchBuf, L"%s\\*", dirData.cFileName);
+
+                LogDirectoryListing(labelBuf, searchBuf);
+            }
+        } while (FindNextFileW(hDirFind, &dirData));
+        FindClose(hDirFind);
+    }
 
     CompilerHelper::Init();
     Win32AToWAdapter::Init();
