@@ -142,6 +142,12 @@ namespace PALStateDetection
                         fontBeginText = nullptr;
                         dbg_log("[FONT_BEGIN] Name struct at a1=0x%08x (taskData+0x%x)", a1, a1 - td);
                     }
+                    else if ((unsigned int)a1 < 0x10000)
+                    {
+                        // a1 is a small integer, not a pointer (e.g. backlog entry index).
+                        // Text will be grabbed later by PalFontGetSize_Hook from the rendering struct.
+                        // Silently ignore — this is expected and happens frequently.
+                    }
                     else
                     {
                         // Continuation text or sprite text - skip leading null bytes
@@ -162,9 +168,8 @@ namespace PALStateDetection
                         }
                         else
                         {
-                            // a1 is not a valid pointer (e.g. 0x0, 0x1 for backlog entry index).
-                            // Text will be grabbed later by PalFontGetSize_Hook from the rendering struct.
-                            dbg_log("[FONT_BEGIN] Unreadable at a1=0x%08x (backlog mode)", a1);
+                            // a1 is not a valid pointer but also not a small integer — unexpected.
+                            dbg_log("[FONT_BEGIN] Unreadable at a1=0x%08x", a1);
                         }
                     }
                 }
