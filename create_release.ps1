@@ -20,9 +20,15 @@ Copy-Item "VNTranslationToolsConstants.json" -Destination $releaseDir
 Write-Host "Copying font files..."
 Copy-Item "Fonts\*.ttf" -Destination $releaseDir
 
-# Copy convert_saves.py
-Write-Host "Copying convert_saves.py..."
-Copy-Item "convert_saves.py" -Destination $releaseDir
+# Build convert_saves.exe
+Write-Host "Building convert_saves.exe..."
+python -m PyInstaller --onefile --console --distpath "Build" --workpath "Build\pyinstaller_work" --specpath "Build" --name convert_saves convert_saves.py
+if (-not $?) {
+    Write-Error "PyInstaller build failed for convert_saves.py"
+    exit 1
+}
+Write-Host "Copying convert_saves.exe..."
+Copy-Item "Build\convert_saves.exe" -Destination $releaseDir
 
 # Create VNTextPatch subdirectory and copy Build\Release contents
 $vnTextPatchDir = Join-Path $releaseDir "VNTextPatch"

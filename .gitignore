@@ -1,0 +1,8 @@
+.vs/
+Build/
+PACPacking/Softpal_PGD_Toolkit/build
+VNTextPatch.Shared/.vs/
+VNTextPatch.Shared/obj/
+VNTextPatch/.vs/
+VNTextPatch/obj/
+VNTextProxy/Debug/
