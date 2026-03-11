@@ -209,25 +209,6 @@ static LONG CALLBACK VectoredCrashHandler(EXCEPTION_POINTERS* ep)
     return EXCEPTION_CONTINUE_SEARCH;
 }
 
-static void CheckRequiredDataFiles()
-{
-    const wchar_t* requiredFiles[] = {
-        L"data\\script.src",
-        L"data\\TEXT.DAT"
-    };
-
-    for (const wchar_t* filePath : requiredFiles)
-    {
-        if (GetFileAttributesW(filePath) == INVALID_FILE_ATTRIBUTES)
-        {
-            std::wstringstream ss;
-            ss << L"Required data file not found: " << filePath << L"\n\n";
-            ss << L"Please ensure you have run VNTextPatch to insert the translated script, or disable enableFontSubstitution in " << RUNTIME_CONFIG_FILENAME;
-            ShowErrorAndExit(ss.str());
-        }
-    }
-}
-
 void Initialize();
 
 __declspec(naked) void EntryPointHook()
@@ -293,7 +274,6 @@ void Initialize()
 //    D2DProportionalizer::Init();
 
     if (RuntimeConfig::EnableFontSubstitution()) {
-        CheckRequiredDataFiles();
         GdiProportionalizer::Init();
         if (!PALGrabCurrentText::Install())
             proxy_log(LogCategory::HOOKS, "WARNING: PALGrabCurrentText::Install failed - text grab will be unavailable");

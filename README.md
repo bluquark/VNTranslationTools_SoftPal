@@ -28,4 +28,8 @@ for whatever you want.
    * 3rd parameter: the output script assembly linked to the translation.
        * It is required that this be in a subdirectory called `data\`.  The SoftPal engine will look for script files in the `data\` directory first, and if it doesn't find them there, then it will fall back to `data.pac`.
 
+To create a translation patch release, after running `VNTextPatch` as described above:
+1. Optionally, copy translated image files as PNGs into `data\`.  For example, if `etc.pac` contains a file in the SoftPAL PGD image format called `ETC_TEGAMI01.PGD`, then the matching translated image file should be called `data\ETC_TEGAMI01.PNG`.
+2. Run `util\create_translation_patch_release.ps1` from the game directory.  It will create a translated `data.pac` (and any other pac files that had any modified images in them) and create a zipfile that contains them along with other required files.  Players of your translation will just need to copy the contents of this zipfile into their game directory (overwriting existing pac files); they don't need any other files you needed while working on the project.
+
 See also [the original Readme](https://github.com/arcusmaximus/VNTranslationTools) for more details.

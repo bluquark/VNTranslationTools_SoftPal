@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # type: ignore[arg-type,possibly-unbound] - memoryview/bytes 兼容性和可选依赖
+
+# Force UTF-8 stdout/stderr on Windows (avoids cp932 crashes with CJK text)
+import sys as _sys, io as _io
+if _sys.stdout and hasattr(_sys.stdout, 'buffer'):
+    _sys.stdout = _io.TextIOWrapper(_sys.stdout.buffer, encoding='utf-8', errors='replace')
+if _sys.stderr and hasattr(_sys.stderr, 'buffer'):
+    _sys.stderr = _io.TextIOWrapper(_sys.stderr.buffer, encoding='utf-8', errors='replace')
 """
 PNG2PGD (GE 格式) - 将 PNG 转换为 GE 格式 PGD
 

@@ -1,0 +1,65 @@
+# Create release directory with today's date
+# Run from VNTranslationTools directory
+$date = Get-Date -Format "MMMdd"
+$releaseName = "VNTranslationTools_${date}_release"
+$releaseDir = "..\$releaseName"
+
+# Create the release directory
+Write-Host "Creating release directory: $releaseDir"
+New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
+
+# Copy winmm.dll
+Write-Host "Copying winmm.dll..."
+Copy-Item "VNTextProxy\Release\winmm.dll" -Destination $releaseDir
+
+# Copy config JSON file
+Write-Host "Copying VNTranslationToolsConstants.json..."
+Copy-Item "VNTranslationToolsConstants.json" -Destination $releaseDir
+
+# Copy all TTF files from Fonts directory
+Write-Host "Copying font files..."
+Copy-Item "Fonts\*.ttf" -Destination $releaseDir
+
+# Create util subdirectory
+$utilDir = Join-Path $releaseDir "util"
+New-Item -ItemType Directory -Path $utilDir -Force | Out-Null
+
+# Build convert_saves.exe
+Write-Host "Building convert_saves.exe..."
+python -m PyInstaller --onefile --console --distpath "Build" --workpath "Build\pyinstaller_work" --specpath "Build" --name convert_saves convert_saves.py
+if (-not $?) {
+    Write-Error "PyInstaller build failed for convert_saves.py"
+    exit 1
+}
+Write-Host "Copying convert_saves.exe..."
+Copy-Item "Build\convert_saves.exe" -Destination $utilDir
+
+# Copy unipack.exe
+Write-Host "Copying unipack.exe..."
+Copy-Item "PACPacking\Unipac\unipack.exe" -Destination $utilDir
+
+# Copy png2pgd_ge.exe
+Write-Host "Copying png2pgd_ge.exe..."
+Copy-Item "PACPacking\Softpal_PGD_Toolkit\dist\png2pgd_ge.exe" -Destination $utilDir
+
+# Copy create_translation_patch_release.ps1
+Write-Host "Copying create_translation_patch_release.ps1..."
+Copy-Item "create_translation_patch_release.ps1" -Destination $utilDir
+
+# Create VNTextPatch subdirectory and copy Build\Release contents
+$vnTextPatchDir = Join-Path $releaseDir "VNTextPatch"
+Write-Host "Creating VNTextPatch subdirectory and copying files..."
+New-Item -ItemType Directory -Path $vnTextPatchDir -Force | Out-Null
+Copy-Item "Build\Release\*" -Destination $vnTextPatchDir -Recurse
+
+# Create zip file inside the release directory
+$zipPath = Join-Path $releaseDir "VNTranslationTools_SoftPal_${date}.zip"
+Write-Host "Creating zip file: $zipPath"
+if (Test-Path $zipPath) {
+    Remove-Item $zipPath -Force
+}
+Compress-Archive -Path "$releaseDir\*" -DestinationPath $zipPath
+
+Write-Host "Release created successfully!"
+Write-Host "  Directory: $releaseDir"
+Write-Host "  Zip file: $zipPath"
